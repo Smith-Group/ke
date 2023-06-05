@@ -299,7 +299,7 @@ deriv_check <- function(func, value, dv, vdims, gdims, ...) {
 #' @export
 coord_array_to_r_array <- function(coord_array, atom_pairs) {
 
-	r_array <- aperm(coord_array[atom_pairs[,2],,]-coord_array[atom_pairs[,1],,], c(1,3,2))
+	r_array <- aperm(coord_array[atom_pairs[,2],,,drop=FALSE]-coord_array[atom_pairs[,1],,,drop=FALSE], c(1,3,2))
 	
 	if (!is.null(dimnames(coord_array))) {
 		atom_names <- sub(" *([^ ]+) *([A-Z]{3}) (.) +([^ ]+) *", "\\4:\\1", dimnames(coord_array)[[1]])

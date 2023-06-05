@@ -102,7 +102,7 @@ read_ensemble <- function(pdb_files, model_idx=NULL, proton_only=FALSE) {
 		unique_atoms <- intersect(unique_atoms, colnames(coord_list[[i]]))
 	}
 	
-	#unique_atoms <- intersect(unique_atoms, c(exchangable_atomids(unique_atoms), n_atomids))
+	#unique_atoms <- intersect(unique_atoms, c(exchangeable_atomids(unique_atoms), n_atomids))
 	
 	if (proton_only) {
 		unique_atoms <- grep("^(H|.H)", unique_atoms, value=TRUE)
@@ -125,9 +125,120 @@ read_ensemble <- function(pdb_files, model_idx=NULL, proton_only=FALSE) {
 			dim=c(dim(coord_array)[1:2], dim(coord_array)[3]/length(pdb_files), length(pdb_files)),
 			dimnames=c(dimnames(coord_array)[1:2], list(paste0("M", model_idx), pdb_files))
 		)
+		
+		if (dim(coord_array)[4] == 1) {
+			
+			new_dim <- dim(coord_array)[-4]
+			new_dimnames <- dimnames(coord_array)[-4]
+			dim(coord_array) <- new_dim
+			dimnames(coord_array) <- new_dimnames
+		}
 	}
 	
 	coord_array
+}
+
+#' Select groups of protons that are typically detectable with unique chemical shifts
+#'
+#' @param coord 3xN matrix with a column for every atom
+#' @param alpha_group logical indicating whether to group aliphatic alpha protons
+#' @param beta_group logical indicating whether to group aliphatic beta protons
+#' @param gamma_group logical indicating whether to group aliphatic gamma protons
+#' @param delta_group logical indicating whether to group aliphatic delta protons
+#' @param epsilon_group logical indicating whether to group aliphatic epsilon protons
+#' @param methyl_group logical indicating whether to group methyl protons
+#' @param aromatic_group logical indicating whether to group phenylalanine/tyrosine delta/epsilon protons
+#' @param amine_group logical indicating whether to group asparagine/glutamine amine protons
+#' @param exclude_exchangeable logical indicating whether rapidly exchangeable protons should be excluded
+#' @param include character vector of exchangeable protons to be explicitly included
+#' @param amber logical indicating if names are from Amber force field
+#'
+#' @return Vector with selected protons. The names give the group the proton belongs to. The name will be the heavy atom name if all of the protons bound to that heavy atom are in the same group. Otherwise, the name will be the proton name.
+#'
+#' @export
+coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, gamma_group=FALSE, delta_group=FALSE, epsilon_group=FALSE, amine_group=FALSE, methyl_group=TRUE, aromatic_group=TRUE, exclude_exchangeable=TRUE, include=character(), amber=FALSE) {
+
+	rapidly_exchangeable_re <- c(
+		"^ HH  TYR", # tyrosine hydroxyl
+		"^ HZ[123] LYS", # lysine amino group
+		"^ HE  ARG", # arginine epsilon NH
+		"^HH[12][12] ARG", # arginine eta NH2
+		"^ HG  SER", # serine hydroxyl
+		"^ HG1 THR", # threonine hydroxyl
+		"^ HD1 HIS", # histidine delta amide hydrogen
+		"^ HE2 HIS", # histidine epsilon amide hydrogen
+		"^ H[123]  ...", # N-terminal amino group
+		"^ HG  CYS" # cysteine hydrogen
+	)
+	
+	if (amber) {
+		rapidly_exchangeable_re <- c(
+			"^ HH  TYR", # tyrosine hydroxyl
+			"^ HZ[123] LYS", # lysine amino group
+			"^ HE  ARG", # arginine epsilon NH
+			"^[12]HH[12] ARG", # arginine eta NH2
+			"^ HG  SER", # serine hydroxyl
+			"^ HG1 THR", # threonine hydroxyl
+			"^ HD1 HIS", # histidine delta amide hydrogen
+			"^ HE2 HIS", # histidine epsilon amide hydrogen
+			"^ H[123]  ..." # N-terminal amino group
+		)
+	}
+	
+	heavy_idx <- substr(colnames(coord_mat), 2, 2) %in% c("C","N","O","S")
+	
+	atom_dist <- as.matrix(stats::dist(t(coord_mat)))
+	
+	group_names <- colnames(coord_mat)[heavy_idx][apply(atom_dist[!heavy_idx,heavy_idx], 1, which.min)]
+	names(group_names) <- colnames(coord_mat)[!heavy_idx]
+	
+	if (exclude_exchangeable) {
+		exclude_idx <- as.integer(unlist(lapply(rapidly_exchangeable_re, grep, names(group_names))))
+		exclude_idx <- setdiff(exclude_idx, which(names(group_names) %in% include))
+		if (length(exclude_idx)) {
+			group_names <- group_names[-exclude_idx]
+		}
+	}
+	
+	if (aromatic_group) {
+		group_names <- sub("( CD| CE)[12] (PHE|TYR)", "\\1* \\2", group_names)
+	}
+	
+	if (methyl_group) {
+		group_names <- sub("( CD)[12] (LEU)", "\\1* \\2", group_names)
+		group_names <- sub("( CG)[12] (VAL)", "\\1* \\2", group_names)
+	}
+	
+	groups_with_nonequivalent_protons <- character()
+	
+	if (!alpha_group) {
+		groups_with_nonequivalent_protons <- c(" CA  GLY")
+	}
+	
+	if (!beta_group) {
+		groups_with_nonequivalent_protons <- c(groups_with_nonequivalent_protons, " CB  ARG", " CB  ASN", " CB  ASP", " CB  CYS", " CB  GLN", " CB  GLU", " CB  HIS", " CB  LEU", " CB  LYS", " CB  MET", " CB  PHE", " CB  PRO", " CB  SER", " CB  TRP", " CB  TYR")
+	}
+	
+	if (!gamma_group) {
+		groups_with_nonequivalent_protons <- c(groups_with_nonequivalent_protons, " CG  ARG", " CG  GLN", " CG  GLU", " CG1 ILE", " CG  LYS", " CG  MET", " CG  PRO")
+	}
+	
+	if (!delta_group) {
+		groups_with_nonequivalent_protons <- c(groups_with_nonequivalent_protons, " CD  ARG", " CD  LYS", " CD  PRO")
+	}
+	
+	if (!epsilon_group) {
+		groups_with_nonequivalent_protons <- c(groups_with_nonequivalent_protons, " CE  LYS")
+	}
+	
+	if (!amine_group) {
+		groups_with_nonequivalent_protons <- c(groups_with_nonequivalent_protons, " ND2 ASN", " NE2 GLN")
+	}
+	
+	nonequivalent_idx <- substr(group_names, 1, 8) %in% groups_with_nonequivalent_protons
+	group_names[nonequivalent_idx] <- names(group_names)[nonequivalent_idx]
+	
+	group_names
 }
 
 #' Check analytical derivatives via finite difference approximation

@@ -88,6 +88,8 @@ singleton_idx <- sapply(group_list, length) == 1
 singleton_pair_idx <- singleton_idx[group_pairs[,1]] & singleton_idx[group_pairs[,2]]
 singleton_atom_pairs <- matrix(unlist(group_list[group_pairs[singleton_pair_idx,]]), ncol=2)
 colnames(singleton_atom_pairs) <- paste0("atom", 1:2)
+singleton_idx_pairs <- matrix(match(singleton_atom_pairs, dimnames(ensemble_coord)[[2]]), ncol=2)
+colnames(singleton_idx_pairs) <- paste0("i", 1:2)
 
 # calculate g values for singletons
 singleton_r_array <- ke::coord_array_to_r_array(aperm(ensemble_coord, c(2,1,3)), singleton_atom_pairs)
@@ -98,6 +100,7 @@ colnames(singleton_g_mat) <- names(grouping_list)
 # create data frame with singleton data
 singleton_data <- data.frame(
 	singleton_atom_pairs,
+	singleton_idx_pairs,
 	singleton_g_mat,
 	s2=group_s2[singleton_pair_idx],
 	rm3=group_rm3_mean[singleton_pair_idx],

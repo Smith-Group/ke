@@ -1,3 +1,33 @@
+#' Convert between one and three letter residue names 
+#'
+#' @usage aa1_to_aa3[aa1]
+#'
+#' @rdname residue_names
+#' @export
+aa1_to_aa3 <- c("TRP", "PHE", "TYR", "MET", "LEU", "ILE", "VAL", "ALA", "GLY", "SER", "THR", "ARG", "LYS", "HIS", "ASN", "GLN", "ASP", "GLU", "PRO", "CYS")
+
+#' @usage aa3_to_aa1[aa3]
+#'
+#' @rdname residue_names
+#' @export
+aa3_to_aa1 <- c("W", "F", "Y", "M", "L", "I", "V", "A", "G", "S", "T", "R", "K", "H", "N", "Q", "D", "E", "P", "C")
+
+names(aa1_to_aa3) <- aa3_to_aa1
+names(aa3_to_aa1) <- aa1_to_aa3
+
+#' Convert between proton atom/residue name pairs
+#'
+#' @rdname atom_residue_names
+#' @export
+amber_to_pdb <- c(" H   ALA", " HA  ALA", " HB1 ALA", " HB2 ALA", " HB3 ALA", " H   ARG", " HA  ARG", " HB2 ARG", " HB3 ARG", " HD2 ARG", " HD3 ARG", " HE  ARG", " HG2 ARG", " HG3 ARG", "HH11 ARG", "HH12 ARG", "HH21 ARG", "HH22 ARG", " H   ASN", " HA  ASN", " HB2 ASN", " HB3 ASN", "HD21 ASN", "HD22 ASN", " H   ASP", " HA  ASP", " HB2 ASP", " HB3 ASP", " H   CYS", " HA  CYS", " HB2 CYS", " HB3 CYS", " HG  CYS", " H   GLN", " HA  GLN", " HB2 GLN", " HB3 GLN", " HG2 GLN", " HG3 GLN", "HE21 GLN", "HE22 GLN", " H   GLU", " HA  GLU", " HB2 GLU", " HB3 GLU", " HG2 GLU", " HG3 GLU", " H   GLY", " HA2 GLY", " HA3 GLY", " H   HIS", " HA  HIS", " HB2 HIS", " HB3 HIS", " HD1 HIS", " HD2 HIS", " HE1 HIS", " HE2 HIS", " H   ILE", " HA  ILE", " HB  ILE", "HD11 ILE", "HD12 ILE", "HD13 ILE", "HG12 ILE", "HG13 ILE", "HG21 ILE", "HG22 ILE", "HG23 ILE", " H   LEU", " HA  LEU", " HB2 LEU", " HB3 LEU", " HG  LEU", "HD11 LEU", "HD12 LEU", "HD13 LEU", "HD21 LEU", "HD22 LEU", "HD23 LEU", " H   LYS", " HA  LYS", " HB2 LYS", " HB3 LYS", " HD2 LYS", " HD3 LYS", " HE2 LYS", " HE3 LYS", " HG2 LYS", " HG3 LYS", " HZ1 LYS", " HZ2 LYS", " HZ3 LYS", " H1  MET", " H2  MET", " H3  MET", " HA  MET", " HB2 MET", " HB3 MET", " HE1 MET", " HE2 MET", " HE3 MET", " HG2 MET", " HG3 MET", " H   PHE", " HA  PHE", " HB2 PHE", " HB3 PHE", " HD1 PHE", " HD2 PHE", " HE1 PHE", " HE2 PHE", " HZ  PHE", " HA  PRO", " HB2 PRO", " HB3 PRO", " HD2 PRO", " HD3 PRO", " HG2 PRO", " HG3 PRO", " H   SER", " HA  SER", " HB2 SER", " HB3 SER", " HG  SER", " H   THR", " HA  THR", " HB  THR", " HG1 THR", "HG21 THR", "HG22 THR", "HG23 THR", " H   TRP", " HA  TRP", " HB2 TRP", " HB3 TRP", " HD1 TRP", " HE1 TRP", " HE3 TRP", " HZ2 TRP", " HZ3 TRP", " HH2 TRP", " H   TYR", " HA  TYR", " HB2 TYR", " HB3 TYR", " HD1 TYR", " HD2 TYR", " HE1 TYR", " HE2 TYR", " HH  TYR", " H   VAL", " HA  VAL", " HB  VAL", "HG11 VAL", "HG12 VAL", "HG13 VAL", "HG21 VAL", "HG22 VAL", "HG23 VAL")
+
+#' @rdname atom_residue_names
+#' @export
+pdb_to_amber <- c(" H   ALA", " HA  ALA", " HB1 ALA", " HB2 ALA", " HB3 ALA", " H   ARG", " HA  ARG", " HB1 ARG", " HB2 ARG", " HD1 ARG", " HD2 ARG", " HE  ARG", " HG1 ARG", " HG2 ARG", "1HH1 ARG", "2HH1 ARG", "1HH2 ARG", "2HH2 ARG", " H   ASN", " HA  ASN", " HB1 ASN", " HB2 ASN", "1HD2 ASN", "2HD2 ASN", " H   ASP", " HA  ASP", " HB1 ASP", " HB2 ASP", " H   CYS", " HA  CYS", " HB1 CYS", " HB2 CYS", " HG  CYS", " H   GLN", " HA  GLN", " HB1 GLN", " HB2 GLN", " HG1 GLN", " HG2 GLN", "1HE2 GLN", "2HE2 GLN", " H   GLU", " HA  GLU", " HB1 GLU", " HB2 GLU", " HG1 GLU", " HG2 GLU", " H   GLY", " HA1 GLY", " HA2 GLY", " H   HIS", " HA  HIS", " HB1 HIS", " HB2 HIS", " HD1 HIS", " HD2 HIS", " HE1 HIS", " HE2 HIS", " H   ILE", " HA  ILE", " HB  ILE", " HD1 ILE", " HD2 ILE", " HD3 ILE", "1HG1 ILE", "2HG1 ILE", "1HG2 ILE", "2HG2 ILE", "3HG2 ILE", " H   LEU", " HA  LEU", " HB1 LEU", " HB2 LEU", " HG  LEU", "1HD1 LEU", "2HD1 LEU", "3HD1 LEU", "1HD2 LEU", "2HD2 LEU", "3HD2 LEU", " H   LYS", " HA  LYS", " HB1 LYS", " HB2 LYS", " HD1 LYS", " HD2 LYS", " HE1 LYS", " HE2 LYS", " HG1 LYS", " HG2 LYS", " HZ1 LYS", " HZ2 LYS", " HZ3 LYS", " H1  MET", " H2  MET", " H3  MET", " HA  MET", " HB1 MET", " HB2 MET", " HE1 MET", " HE2 MET", " HE3 MET", " HG1 MET", " HG2 MET", " H   PHE", " HA  PHE", " HB1 PHE", " HB2 PHE", " HD1 PHE", " HD2 PHE", " HE1 PHE", " HE2 PHE", " HZ  PHE", " HA  PRO", " HB1 PRO", " HB2 PRO", " HD1 PRO", " HD2 PRO", " HG1 PRO", " HG2 PRO", " H   SER", " HA  SER", " HB1 SER", " HB2 SER", " HG  SER", " H   THR", " HA  THR", " HB  THR", " HG1 THR", "1HG2 THR", "2HG2 THR", "3HG2 THR", " H   TRP", " HA  TRP", " HB1 TRP", " HB2 TRP", " HD1 TRP", " HE1 TRP", " HE3 TRP", " HZ2 TRP", " HZ3 TRP", " HH2 TRP", " H   TYR", " HA  TYR", " HB1 TYR", " HB2 TYR", " HD1 TYR", " HD2 TYR", " HE1 TYR", " HE2 TYR", " HH  TYR", " H   VAL", " HA  VAL", " HB  VAL", "1HG1 VAL", "2HG1 VAL", "3HG1 VAL", "1HG2 VAL", "2HG2 VAL", "3HG2 VAL")
+
+names(amber_to_pdb)	<- pdb_to_amber
+names(pdb_to_amber) <- amber_to_pdb
+
 #' Convert PDB formatted atom lines into a matrix
 #'
 #' Generate a matrix containing coordinates in a set of PDB atom lines
@@ -51,6 +81,170 @@ atom_lines_to_coord <- function(atom_lines) {
 coord_to_atom_lines <- function(coord) {
 
 	sprintf("ATOM  %5i %s   %8.3f%8.3f%8.3f  1.00  0.00", seq_len(ncol(coord)), colnames(coord), coord[1,], coord[2,], coord[3,])
+}
+
+#' Get or set four-character atom names
+#'
+#' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @rdname coord_atomnames
+#' @export
+coord_atomnames <- function(coord) {
+
+	if (is.array(coord) && is.character(dimnames(coord)[[2]])) {
+		substr(dimnames(coord)[[2]], 1, 4)
+	} else if (is.character(coord)) {
+		substr(coord, 1, 4)
+	} else {
+		stop("coord not named array or character")
+	}
+}
+
+#' @param value character vector with four characters per element
+#'
+#' @rdname coord_atomnames
+#' @export
+`coord_atomnames<-` <- function(coord, value) {
+
+	stopifnot(nchar(value) == 4)
+
+	if (is.array(coord) && is.character(dimnames(coord)[[2]])) {
+		substr(dimnames(coord)[[2]], 1, 4) <- value
+	} else if (is.character(coord)) {
+		substr(coord, 1, 4) <- value
+	} else {
+		stop("coord not named array or character")
+	}
+	
+	coord
+}
+
+#' Get or set three-character residue names
+#'
+#' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB res records
+#'
+#' @rdname coord_resnames
+#' @export
+coord_resnames <- function(coord) {
+
+	substr(dimnames(coord)[[2]], 6, 8)
+}
+
+#' @param value character vector with three characters per element
+#'
+#' @rdname coord_resnames
+#' @export
+`coord_resnames<-` <- function(coord, value) {
+
+	stopifnot(nchar(value) == 4)
+
+	substr(dimnames(coord)[[2]], 6, 8) <- value
+	
+	coord
+}
+
+#' Get or set atom/residue name pairs
+#'
+#' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @rdname coord_atomresnames
+#' @export
+coord_atomresnames <- function(coord) {
+
+	atomresnames <- substr(dimnames(coord)[[2]], 1, 8)
+	substr(atomresnames, 5, 5) <- " "
+	
+	atomresnames
+}
+
+#' @param value character vector with eight characters per element (1-4: atom name, 6-8: residue name)
+#'
+#' @rdname coord_atomresnames
+#' @export
+`coord_atomresnames<-` <- function(coord, value) {
+
+	stopifnot(nchar(value) == 4)
+
+	substr(dimnames(coord)[[2]], 1, 4) <- substr(value, 1, 4)
+	substr(dimnames(coord)[[2]], 6, 8) <- substr(value, 6, 8)
+	
+	coord
+}
+
+#' Get or set residue sequence number
+#'
+#' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @rdname coord_resseq
+#' @export
+coord_resseq <- function(coord) {
+
+	if (is.array(coord) && is.character(dimnames(coord)[[2]])) {
+		as.integer(substr(dimnames(coord)[[2]], 11, 14))
+	} else if (is.character(coord)) {
+		as.integer(substr(coord, 11, 14))
+	} else {
+		stop("coord not named array or character")
+	}
+}
+
+#' @param value integer or character vector with no more than four digits
+#'
+#' @rdname coord_resseq
+#' @export
+`coord_resseq<-` <- function(coord, value) {
+
+	value <- as.character(value)
+	stopifnot(nchar(value) <= 4)
+
+	if (is.array(coord) && is.character(dimnames(coord)[[2]])) {
+		substr(dimnames(coord)[[2]], 11, 14) <- sprintf("%-4s", value)
+	} else if (is.character(coord)) {
+		substr(coord, 11, 14) <- sprintf("%-4s", value)
+	} else {
+		stop("coord not named array or character")
+	}
+	
+	coord
+}
+
+#' Determine whether an atom is rapidly exchangeable at neutral pH
+#'
+#' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @export
+coord_rapidly_exchangeable <- function(coord, amber=FALSE) {
+
+	rapidly_exchangeable_re <- c(
+		"^ HH  TYR", # tyrosine hydroxyl
+		"^ HZ[123] LYS", # lysine amino group
+		"^ HE  ARG", # arginine epsilon NH
+		"^HH[12][12] ARG", # arginine eta NH2
+		"^ HG  SER", # serine hydroxyl
+		"^ HG1 THR", # threonine hydroxyl
+		"^ HD1 HIS", # histidine delta amide hydrogen
+		"^ HE2 HIS", # histidine epsilon amide hydrogen
+		"^ H[123]  ...", # N-terminal amino group
+		"^ HG  CYS" # cysteine hydrogen
+	)
+	
+	if (amber) {
+		rapidly_exchangeable_re <- c(
+			"^ HH  TYR", # tyrosine hydroxyl
+			"^ HZ[123] LYS", # lysine amino group
+			"^ HE  ARG", # arginine epsilon NH
+			"^[12]HH[12] ARG", # arginine eta NH2
+			"^ HG  SER", # serine hydroxyl
+			"^ HG1 THR", # threonine hydroxyl
+			"^ HD1 HIS", # histidine delta amide hydrogen
+			"^ HE2 HIS", # histidine epsilon amide hydrogen
+			"^ H[123]  ..." # N-terminal amino group
+		)
+	}
+	
+	match_mat <- sapply(rapidly_exchangeable_re, grepl, dimnames(coord)[[2]])
+	
+	apply(match_mat, 1, any)
 }
 
 #' Read an ensemble of PDB files
@@ -156,35 +350,8 @@ read_ensemble <- function(pdb_files, model_idx=NULL, proton_only=FALSE) {
 #' @return Vector with selected protons. The names give the group the proton belongs to. The name will be the heavy atom name if all of the protons bound to that heavy atom are in the same group. Otherwise, the name will be the proton name.
 #'
 #' @export
-coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, gamma_group=FALSE, delta_group=FALSE, epsilon_group=FALSE, amine_group=FALSE, methyl_group=TRUE, aromatic_group=TRUE, exclude_exchangeable=TRUE, include=character(), amber=FALSE) {
+coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, gamma_group=FALSE, delta_group=FALSE, epsilon_group=FALSE, amine_group=FALSE, methyl_group=FALSE, aromatic_group=TRUE, exclude_exchangeable=TRUE, include=character(), amber=FALSE) {
 
-	rapidly_exchangeable_re <- c(
-		"^ HH  TYR", # tyrosine hydroxyl
-		"^ HZ[123] LYS", # lysine amino group
-		"^ HE  ARG", # arginine epsilon NH
-		"^HH[12][12] ARG", # arginine eta NH2
-		"^ HG  SER", # serine hydroxyl
-		"^ HG1 THR", # threonine hydroxyl
-		"^ HD1 HIS", # histidine delta amide hydrogen
-		"^ HE2 HIS", # histidine epsilon amide hydrogen
-		"^ H[123]  ...", # N-terminal amino group
-		"^ HG  CYS" # cysteine hydrogen
-	)
-	
-	if (amber) {
-		rapidly_exchangeable_re <- c(
-			"^ HH  TYR", # tyrosine hydroxyl
-			"^ HZ[123] LYS", # lysine amino group
-			"^ HE  ARG", # arginine epsilon NH
-			"^[12]HH[12] ARG", # arginine eta NH2
-			"^ HG  SER", # serine hydroxyl
-			"^ HG1 THR", # threonine hydroxyl
-			"^ HD1 HIS", # histidine delta amide hydrogen
-			"^ HE2 HIS", # histidine epsilon amide hydrogen
-			"^ H[123]  ..." # N-terminal amino group
-		)
-	}
-	
 	heavy_idx <- substr(colnames(coord_mat), 2, 2) %in% c("C","N","O","S")
 	
 	atom_dist <- as.matrix(stats::dist(t(coord_mat)))
@@ -193,7 +360,7 @@ coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, 
 	names(group_names) <- colnames(coord_mat)[!heavy_idx]
 	
 	if (exclude_exchangeable) {
-		exclude_idx <- as.integer(unlist(lapply(rapidly_exchangeable_re, grep, names(group_names))))
+		exclude_idx <- which(coord_rapidly_exchangeable(coord_mat[,!heavy_idx], amber))
 		exclude_idx <- setdiff(exclude_idx, which(names(group_names) %in% include))
 		if (length(exclude_idx)) {
 			group_names <- group_names[-exclude_idx]
@@ -239,6 +406,92 @@ coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, 
 	group_names[nonequivalent_idx] <- names(group_names)[nonequivalent_idx]
 	
 	group_names
+}
+
+#' Calculate bond distances between a set of atoms
+#'
+#' @param coord 3xN matrix with a column for every atom
+#' @param depth maximum bond distance to calculate
+#'
+#' @return NxN matrix with bond distances between atoms (or NA if not calculated)
+#'
+#' @export
+bond_separation <- function(coord_mat, depth=4) {
+
+	bond_sep_mat <- matrix(NA_integer_, nrow=ncol(coord_mat), ncol=ncol(coord_mat), dimnames=list(colnames(coord_mat), colnames(coord_mat)))
+	diag(bond_sep_mat) <- 0
+
+	heavy_idx <- substr(colnames(coord_mat), 2, 2) %in% c("C","N","O","S")
+	
+	atom_dist <- as.matrix(stats::dist(t(coord_mat)))
+
+	heavy_names <- colnames(coord_mat)[heavy_idx][apply(atom_dist[!heavy_idx,heavy_idx], 1, which.min)]
+	proton_names <- colnames(coord_mat)[!heavy_idx]
+
+	bond_sep_mat[cbind(heavy_names,proton_names)] <- bond_sep_mat[cbind(proton_names,heavy_names)] <- 1
+
+	heavy_bond_mat <- which(atom_dist[heavy_idx,heavy_idx] > 0 & atom_dist[heavy_idx,heavy_idx] < 2, arr.ind=TRUE)
+	heavy_bond_mat <- matrix(colnames(coord_mat)[heavy_idx][heavy_bond_mat], ncol=2)
+
+	bond_sep_mat[heavy_bond_mat] <- 1
+
+	for (i in seq_len(depth-1)) {
+		for (j in seq_len(nrow(bond_sep_mat))) {
+			bond_idx <- which(bond_sep_mat[j,] == i)
+			onebond_idx <- unique(which(bond_sep_mat[,bond_idx,drop=FALSE] == 1, arr.ind=TRUE)[,1])
+			nbond_idx <- onebond_idx[is.na(bond_sep_mat[j,onebond_idx])]
+			bond_sep_mat[j,nbond_idx] <- i+1
+		}
+	}
+
+	bond_sep_mat
+}
+
+#' Collapse first two dimensions of an array
+#'
+#' @param arr two or three dimensional array with the first two dimensions having the same length
+#' @param idx_list list of character or integer indices to accumulate using func
+#' @param func function to apply
+#'
+#' @export
+collapse_array <- function(arr, idx_list, func=`+`) {
+
+	idx_length <- sapply(idx_list, length)
+	
+	source_idx <- lapply(seq_len(max(idx_length)), function(idx) sapply(idx_list, function(x) x[idx]))
+	dest_idx <- lapply(seq_along(source_idx), function(idx) which(!is.na(source_idx[[idx]])))
+	source_idx <- lapply(seq_along(source_idx), function(idx) source_idx[[idx]][dest_idx[[idx]]])
+	
+	stopifnot(length(dim(arr)) %in% c(2L, 3L))
+	
+	if (length(dim(arr)) == 2) {
+		
+		arr_rows_collapsed <- arr[source_idx[[1]],,drop=FALSE]
+		for (i in seq_along(source_idx)[-1]) {
+			arr_rows_collapsed[dest_idx[[i]],] <- func(arr_rows_collapsed[dest_idx[[i]],],arr[source_idx[[i]],])
+		}
+	
+		arr_rows_cols_collapsed <- arr_rows_collapsed[,source_idx[[1]],drop=FALSE]
+		for (i in seq_along(source_idx)[-1]) {
+			arr_rows_cols_collapsed[,dest_idx[[i]]] <- func(arr_rows_cols_collapsed[,dest_idx[[i]]],arr_rows_collapsed[,source_idx[[i]]])
+		}
+	
+	} else if (length(dim(arr)) == 3) {
+		
+		arr_rows_collapsed <- arr[source_idx[[1]],,,drop=FALSE]
+		for (i in seq_along(source_idx)[-1]) {
+			arr_rows_collapsed[dest_idx[[i]],,] <- func(arr_rows_collapsed[dest_idx[[i]],,],arr[source_idx[[i]],,])
+		}
+	
+		arr_rows_cols_collapsed <- arr_rows_collapsed[,source_idx[[1]],,drop=FALSE]
+		for (i in seq_along(source_idx)[-1]) {
+			arr_rows_cols_collapsed[,dest_idx[[i]],] <- func(arr_rows_cols_collapsed[,dest_idx[[i]],],arr_rows_collapsed[,source_idx[[i]],])
+		}
+	}
+	
+	dimnames(arr_rows_cols_collapsed)[1:2] <- list(names(idx_list), names(idx_list))
+	
+	arr_rows_cols_collapsed
 }
 
 #' Check analytical derivatives via finite difference approximation

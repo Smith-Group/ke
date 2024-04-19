@@ -12,7 +12,7 @@ coord_proton_groups(
   delta_group = FALSE,
   epsilon_group = FALSE,
   amine_group = FALSE,
-  methyl_group = TRUE,
+  methyl_group = FALSE,
   aromatic_group = TRUE,
   exclude_exchangeable = TRUE,
   include = character(),

@@ -722,8 +722,9 @@ d_array_to_g <- function(d_array, grouping, gradient=FALSE) {
 #' @return restraint energy calculated using \eqn{k*(g-g0)^2}
 #'
 #' @export
-g_to_energy <- function (g, g0, k=1, gradient=FALSE) {
+g_to_energy <- function(g, g0, k=1, gradient=FALSE) {
 
+	attr(g, "gradient") <- NULL
     expr1 <- g - g0
     value <- k * expr1^2
     if (gradient) {

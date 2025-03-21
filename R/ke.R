@@ -735,6 +735,47 @@ g_to_energy <- function (g, g0, k=1, gradient=FALSE) {
     value
 }
 
+#' Scale real or back calculated values towards zero by taking a power
+#'
+#' @param x numerical values to be rescaled
+#' @param p numeric power to raise the values to, usually 1 or less
+#'
+#' @return \deqn{ ( ( |x| + 1 )^p - 1 ) \sgn x }
+power_scale <- function(x, p) {
+	( ( abs(x) + 1 )^p - 1 ) * sign(x)
+}
+
+#' Traditional squared loss function scaled by a power
+#'
+#' @param x current values
+#' @param x0 target values
+#' @param p numeric power to raise the values to, usually 1 or less
+#' @param k force constant
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return \deqn{ k \left ( ( ( |x| + 1 )^p - 1 ) \sgn x - ( ( |x_0| + 1 )^p - 1 ) \sgn x_0 \right )^2 }
+#'
+#' @examples
+#' x <- seq(-10, 10, by=0.1)
+#' loss_x <- loss(x, 2, 0.25, gradient=TRUE)
+#' par(mfrow=c(2, 1))
+#' plot(x, loss_x, type="l", ylab="loss")
+#' plot(x, attr(loss_x, "gradient"), type="l", ylab="dloss/dx")
+#' points(x[-1]-mean(diff(x))/2, diff(loss_x)/mean(diff(x)), type="l", col="blue")
+#' abline(h = 0, col="gray")
+#' legend("bottomright", legend=c("Analytical", "Finite Difference"), bty="n", lwd=1, col=c("black", "blue"))
+power_scaled_loss <- function(x, x0, p=1, k=1, gradient=FALSE) {
+	
+	expr1 <- ( ( abs(x) + 1 )^p - 1 ) * sign(x) - ( ( abs(x0) + 1 )^p - 1 ) * sign(x0)
+	value <- sum(k * expr1^2)
+	if (gradient) {
+		# D[(((Abs[x] + 1)^p - 1)*Sign[x] - ((Abs[x0] + 1)^p - 1)*Sign[x0])^2, x]
+		grad <- k * (2 * expr1) * p * ( abs(x) + 1 )^(p-1) #* sign(x) * sign(x)
+		attr(value, "gradient") <- grad
+	}
+	value
+}
+
 #' Calculate group norm squared values from atomic coordinates
 #'
 #' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates

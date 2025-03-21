@@ -952,3 +952,134 @@ make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, s
 	
 	spec_den_data_list
 }
+
+#' Tests with toy example from Smith 2020 J Biomol NMR
+test_toy <- function() {
+
+	toy_r_mat <- matrix(c(
+		0.848351683690084, -0.529433112659379, 0,
+		0.966177888683851, 0.257876496444355, 0,
+		0.966177888683851, -0.257876496444355, 0,
+		0.848351683690084, 0.529433112659379, 0
+	), ncol=3, byrow=TRUE, dimnames=list(paste0("M", 1:4), c("x","y","z")))
+
+	toy_grouping_list <- list(
+		list(c(1L, 2L, 3L, 4L)),
+		list(c(1L, 2L), c(3L, 4L)),
+		list(1L, 2L, 3L, 4L)
+	)
+
+	toy_r_array <- array(toy_r_mat, dim=c(1, dim(toy_r_mat)), dimnames=c(list(NULL), dimnames(toy_r_mat)))
+	toy_d_array <- r_array_to_d_array(toy_r_array, gradient=TRUE)
+	toy_g_list <- list(
+		g1=d_array_to_g(toy_d_array, toy_grouping_list[[1]], gradient=TRUE),
+		g2=d_array_to_g(toy_d_array, toy_grouping_list[[2]], gradient=TRUE),
+		g3=d_array_to_g(toy_d_array, toy_grouping_list[[3]], gradient=TRUE)
+	)
+
+	# derivative checks
+	stopifnot(abs(deriv_check(r_array_to_d_array, toy_r_array, dv=1e-8, vdims=3, gdims=4)) < 1e-6)
+	stopifnot(abs(deriv_check(d_array_to_g, toy_d_array, dv=1e-8, vdims=2:3, gdims=2:3, grouping=toy_grouping_list[[1]])) < 1e-7)
+	stopifnot(abs(deriv_check(d_array_to_g, toy_d_array, dv=1e-8, vdims=2:3, gdims=2:3, grouping=toy_grouping_list[[2]])) < 1e-8)
+	stopifnot(abs(deriv_check(d_array_to_g, toy_d_array, dv=1e-8, vdims=2:3, gdims=2:3, grouping=toy_grouping_list[[3]])) < 1e-8)
+}
+
+#' Tests with random internuclear vectors of length 1
+test_random <- function() {
+
+	if (!"r_mat_check" %in% ls()) {
+		r_mat_check <- matrix(rnorm(30), ncol=3)
+		r_mat_check <- r_mat_check/sqrt(rowSums(r_mat_check^2))
+	}
+
+	# derivative checks
+	stopifnot(abs(deriv_check(r_array_to_d_array, r_mat_check, dv=1e-8, vdims=2, gdims=3)) < 1e-6)
+}
+
+#' Tests with EROS3 ensemble subset (First two ensemble members and five atoms from M1)
+test_eros3 <- function() {
+
+	eros3_coord <- read_ensemble("https://files.rcsb.org/download/6V5D.pdb")
+
+	eros3_sub_atom_pairs <- matrix(c(
+		" HA  MET A   1 ", " HB2 MET A   1 ",
+		" HA  MET A   1 ", " HB3 MET A   1 ",
+		" HA  MET A   1 ", " HG2 MET A   1 ",
+		" HA  MET A   1 ", " HG3 MET A   1 "
+	), ncol=2, byrow=TRUE)
+
+	eros3_grouping_list <- list(list(1L, 2L), list(c(1L, 2L)))
+
+	eros3_sub_coord <- aperm(eros3_coord[,dimnames(eros3_coord)[[2]] %in% eros3_sub_atom_pairs,1:2], c(2,1,3))
+	eros3_sub_r_array <- coord_array_to_r_array(eros3_sub_coord, eros3_sub_atom_pairs)
+	eros3_sub_d_array <- r_array_to_d_array(eros3_sub_r_array, gradient=TRUE)
+	eros3_sub_g_list <- list(
+		g1=d_array_to_g(eros3_sub_d_array, eros3_grouping_list[[1]], gradient=TRUE),
+		g2=d_array_to_g(eros3_sub_d_array, eros3_grouping_list[[2]], gradient=TRUE)
+	)
+
+	eros3_sub_g <- coord_array_to_g(eros3_sub_coord, eros3_sub_atom_pairs, eros3_grouping_list)
+
+	# get g values using M1 twice
+	eros3_sub_1_g <- coord_array_to_g(eros3_sub_coord[,,c(1,1)], eros3_sub_atom_pairs, eros3_grouping_list)
+
+	eros3_sub_energy <- coord_array_to_g_energy(eros3_sub_coord, eros3_sub_atom_pairs, eros3_grouping_list, eros3_sub_1_g, 1, gradient=TRUE)
+
+	# derivative checks
+	stopifnot(abs(deriv_check(r_array_to_d_array, eros3_sub_r_array, dv=1e-8, vdims=3, gdims=4)) < 1e-6)
+	stopifnot(abs(deriv_check(d_array_to_g, eros3_sub_d_array, dv=1e-8, vdims=2:3, gdims=2:3, grouping=eros3_grouping_list[[1]])) < 1e-8)
+	stopifnot(abs(deriv_check(d_array_to_g, eros3_sub_d_array, dv=1e-8, vdims=2:3, gdims=2:3, grouping=eros3_grouping_list[[2]])) < 1e-8)
+	stopifnot(abs(deriv_check(coord_array_to_g_energy, eros3_sub_coord, dv=1e-8, vdims=1:3, gdims=1:3, atom_pairs=eros3_sub_atom_pairs, grouping_list=eros3_grouping_list, g0=eros3_sub_1_g, k=1)) < 1e-11)
+}
+
+test_gb3 <- function() {
+
+	pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only = TRUE)[,,1:3]
+	
+	base_rates <- c(kens=1/2e-9)
+	
+	base_rate_mat <- rate_mat_simple(base_rates, dimnames(pdb2lum)[[3]])
+	
+	ke_data <- make_ke_data(pdb2lum, base_rate_mat, base_rates, kc=1/4e-9, proton_mhz=700, mix_times=70e-3)
+	
+	ke_data$equiv_list <- equiv_list_name(ke_data$equiv_list, restype = FALSE)
+	
+	atom_pairs <- structure(c("1:HA", "1:H1", "1:H1", "30:QD", "3:QD", "4:QZ", "1:H1", "3:QD", "1:QE", "3:QD", "1:QE", "1:QE"), dim = c(6L, 2L))
+	
+	spec_den_data <- make_spec_den_data(ke_data, atom_pairs, sigma = rep(0, nrow(atom_pairs)))
+	
+	coord_array <- aperm(pdb2lum, c(2,1,3))
+	
+	lapply(spec_den_data, function(dipole_kinetic_data) {
+	
+		# calculate internuclear vectors (convert from Å^-3 to m^-3)
+		r_array <- coord_array_to_r_array(coord_array*1e-10, dipole_kinetic_data[["atom_pairs"]][,1:2,drop=FALSE])
+	
+		# calculate dipole-dipole interaction tensors
+		d_array <- r_array_to_d_array(r_array)
+		stopifnot(abs(deriv_check(r_array_to_d_array, r_array, dv=1e-18, vdims=3, gdims=4)) < 1e-6)
+	
+		# calculate the factor by which the number of models should be expanded
+		n_shift <- ncol(dipole_kinetic_data[["groupings"]])/dim(coord_array)[3]
+	
+		# shift tensor components from atom pairs into virtual models
+		d_array_shifted <- array_shift(d_array, n_shift)
+		
+		# calculate matrix of g values
+		g_matrix <- d_array_to_g_matrix(d_array_shifted, dipole_kinetic_data[["groupings"]])
+		
+		# calculate matrix of a values
+		a_matrix <- g_matrix_to_a_matrix(g_matrix, dipole_kinetic_data[["a_coef"]])
+		
+		# calculate lambda eigenvalues
+		lambda_vec <- -colSums(ke_data$rates[rownames(dipole_kinetic_data[["lambda_coef"]])]*dipole_kinetic_data[["lambda_coef"]])
+		
+		# update eigenvalues to account for molecular tumbling
+		lambda_prime_vec <- lambda_vec - ke_data$rates["kc"]
+		
+		#print(min(attr(a_matrix_to_sigma(a_matrix, lambda_prime_vec, ke_data$proton_mhz, gradient=TRUE), "gradient")))
+		#print(a_matrix)
+		
+		stopifnot(abs(deriv_check(a_matrix_to_sigma, a_matrix, dv=min(a_matrix)*1e-2, vdims=2, gdims=2, lambda_prime_vec=lambda_prime_vec, proton_mhz=ke_data$proton_mhz)) < 1e-68)
+	})
+}

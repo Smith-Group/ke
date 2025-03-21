@@ -664,6 +664,12 @@ d_array_to_g <- function(d_array, grouping, gradient=FALSE) {
 
 	value <- numeric(dim(d_array)[1])
 	
+	if (is.integer(grouping)) {
+		
+		# convert integer vector grouping to list grouping if necessary
+		grouping <- lapply(lapply(seq_len(max(grouping)), "==", grouping), which)
+	}
+	
 	if (gradient) {
 	
 		grad <- d_array

@@ -508,7 +508,7 @@ collapse_array <- function(arr, idx_list, func=`+`) {
 #' @export
 deriv_check <- function(func, value, dv, vdims, gdims, ...) {
 
-	result <- func(value, ...)
+	result <- func(value, ..., gradient=TRUE)
 	
 	# gradient calculated analytically to check
 	gradient <- attr(result, "gradient")

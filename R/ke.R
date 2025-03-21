@@ -800,6 +800,90 @@ d_array_to_g_matrix_backprop <- function(d_g_matrix_d_d_array, d_energy_d_g_matr
 	d_energy_d_d_array
 }
 
+#' Calculate matrix of a values from a matrix of g values
+#'
+#' @param g_matrix matrix of g values with columns associated with different groupings
+#' @param a_coef coefficients used for calculating a values
+#' @param gradient a logical value indicating whether to calculate the derivative
+g_matrix_to_a_matrix <- function(g_matrix, a_coef) {
+
+	a_matrix <- matrix(0, nrow=nrow(g_matrix), ncol=ncol(a_coef), dimnames=list(rownames(g_matrix), colnames(a_coef)))
+	
+	for (i in seq_len(ncol(a_coef))) {
+		for (j in which(a_coef[,i] != 0)) {
+			a_matrix[,i] <- a_matrix[,i] + a_coef[j,i]*g_matrix[,j]
+		}
+	}
+	
+	a_matrix
+}
+
+#' Back-propagate energy derivative from a matrix to g matrix
+#'
+#' @param a_coef coefficients used for calculating a values
+#' @param d_energy_d_sigma matrix (pairs, eigenvalues)
+#'
+#' @return matrix (pairs, groupings) with d_energy_d_g_matrix
+g_matrix_to_a_matrix_backprop <- function(a_coef, d_energy_d_a_matrix) {
+
+	d_energy_d_g_matrix <- matrix(0, nrow=nrow(d_energy_d_a_matrix), ncol=nrow(a_coef), dimnames=list(rownames(d_energy_d_a_matrix), NULL))
+
+	for (i in seq_len(nrow(a_coef))) {
+		for (j in which(a_coef[i,] != 0)) {
+			d_energy_d_g_matrix[,i] <- d_energy_d_g_matrix[,i] + d_energy_d_a_matrix[,j]/a_coef[i,j]
+		}
+	}
+	
+	d_energy_d_g_matrix
+}
+
+#' Calculate sigma from a matrix of a values
+#'
+#' @param a_matrix matrix of a values with columns associated with eigenvalues
+#' @param lambda_prime_vec eigenvalues augmented with tumbling rate
+#' @param proton_mhz spectrometer proton field strength in MHz
+#' @param gradient a logical value indicating whether to calculate the derivative
+a_matrix_to_sigma <- function(a_matrix, lambda_prime_vec, proton_mhz, gradient=FALSE) {
+
+	# K^2
+	# ((1.2566370614e-6 kilogram meters / (ampere^2 second^2))/(4*pi)*(1.054571726e-34 meter^2 kilograms / second)*(267.513e6 radian s^-1 T^-1)^2)^2
+	# 5.69549944e-49 rad m^6 / s^2
+	K_sq <- 5.69549944e-49
+	omega0 <- proton_mhz*1e6*2*pi
+
+	a_matrix <- t(a_matrix)
+	
+	J0 <- -2*colSums(a_matrix/lambda_prime_vec)
+	#Jomega <- -2*colSums(a_matrix*lambda_prime_vec/(lambda_prime_vec^2 + (omega0)^2))
+	J2omega <- -2*colSums(a_matrix*lambda_prime_vec/(lambda_prime_vec^2 + (2*omega0)^2))
+	
+	value <- 0.1*K_sq*(3*J2omega - 0.5*J0)
+	
+	if (gradient) {
+	
+		d_J0_d_a_matrix <- -2/lambda_prime_vec
+		d_J2omega_d_a_matrix <- -2*lambda_prime_vec/(lambda_prime_vec^2 + (2*omega0)^2)
+		
+		d_sigma_d_a_matrix <- 0.1*K_sq*(3*d_J2omega_d_a_matrix - 0.5*d_J0_d_a_matrix)
+		
+		attr(value, "gradient") <- matrix(d_sigma_d_a_matrix, nrow=ncol(a_matrix), ncol=nrow(a_matrix), byrow=TRUE)
+	}
+	
+	value
+}
+
+#' Back-propagate energy derivative from sigma to a matrix
+#'
+#' @param d_sigma_d_a_matrix matrix (pairs, eigenvalues) fom `gradient` attribute of
+#'    `a_matrix_to_sigma()`
+#' @param d_energy_d_sigma vector (pairs)
+#'
+#' @return matrix (pairs, eigenvalues) with d_energy_d_a_matrix
+a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
+
+	d_sigma_d_a_matrix*d_energy_d_sigma
+}
+
 #' Calculate restraint energy from group norm squared values
 #'
 #' @param g current group norm squared values
@@ -1005,6 +1089,230 @@ coord_array_to_g_energy_refactored <- function(coord_array, atom_pairs, grouping
 		
 		# set coordinate gradient to accumulated values
 		attr(value, "gradient") <- d_energy_d_coord_array
+	}
+	
+	value
+}
+
+#' Read data for calculating spectral density functions
+#'
+#' @param path to prefix of four CSV files
+#'
+#' @value a list with elements: `atom_pairs`, `groupings`, `a_coef`, and `lambda_coef`
+#'
+#' @export
+read_spec_den_data <- function(prefix_path) {
+
+	atom_pairs <- read.csv(paste0(prefix_path, "_atom_pairs.csv"))
+	groupings <- unname(as.matrix(read.csv(paste0(prefix_path, "_groupings.csv"), header=FALSE, row.names=NULL)))
+	a_coef <- as.matrix(read.csv(paste0(prefix_path, "_a_coef.csv"), check.names=FALSE))
+	lambda_coef <- as.matrix(read.csv(paste0(prefix_path, "_lambda_coef.csv"), check.names=FALSE, row.names=1))
+	
+	list(
+		atom_pairs = atom_pair_sigma,
+		groupings = groupings,
+		a_coef = a_coef,
+		lambda_coef = lambda_coef
+	)
+}
+
+#' Shift from one array dimension to another
+#'
+#' @param a array whose dimensions should be shifted
+#' @param n integer factor to divide `dfrom` dimension and multiply `dto` dimension
+#' @param dnames list with dimension names as alternative to specifying `n`
+#' @param dfrom integer with dimension to move from
+#' @param dto integer with dimension to move to (should be one greater than `dfrom`)
+array_shift <- function(a, n=NULL, dnames=NULL, dfrom=1, dto=2) {
+
+	if (!is.null(n)) {
+	
+		if (n == 1) {
+			return(a)
+		}
+	
+		new_a <- a
+	
+		new_dim <- dim(a)
+		new_dim[dfrom] <- dim(a)[dfrom]/n
+		new_dim[dto] <- dim(a)[dto]*n
+		dim(new_a) <- new_dim
+		
+		new_dimnames <- dimnames(a)
+		if (!is.null(dimnames(a)[[dfrom]])) {
+			new_dimnames[[dfrom]] <- dimnames(a)[[dfrom]][seq_len(length(dimnames(a)[[dfrom]])/n)]
+		}
+		if (!is.null(dimnames(a)[[dto]])) {
+			new_dimnames[[dto]] <- paste(rep(dimnames(a)[[dto]], each=n), seq_len(n), sep="-")
+		}
+		dimnames(new_a) <- new_dimnames
+	
+	} else if (!is.null(dnames)) {
+	
+		new_a <- a
+		dim(new_a) <- sapply(dnames, length)
+		dimnames(new_a) <- dnames
+	
+	} else {
+	
+		stop()
+	}
+	
+	new_a
+}
+
+#' Calculate cross relaxation rates from atomic coordinates
+#'
+#' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
+#' @param rates named numeric vector with rates
+#' @param spec_den_data_list list of data for calculating spectral density functions
+#' @param proton_mhz spectrometer proton field strength in MHz
+#'
+#' @export
+coord_array_to_sigma <- function(coord_array, rates, spec_den_data_list, proton_mhz) {
+
+	lapply(spec_den_data_list, function(spec_den_data) {
+	
+		# calculate internuclear vectors (convert from Å^-3 to m^-3)
+		r_array <- coord_array_to_r_array(coord_array*1e-10, spec_den_data[["atom_pairs"]][,1:2,drop=FALSE])
+	
+		# calculate dipole-dipole interaction tensors
+		d_array <- r_array_to_d_array(r_array)
+	
+		# calculate the factor by which the number of models should be expanded
+		n_shift <- ncol(spec_den_data[["groupings"]])/dim(coord_array)[3]
+	
+		# shift tensor components from atom pairs into virtual models
+		d_array_shifted <- array_shift(d_array, n_shift)
+		
+		# calculate matrix of g values
+		g_mat <- apply(spec_den_data[["groupings"]], 1, d_array_to_g, d_array=d_array_shifted)
+		
+		# calculate matrix of a values
+		a_mat <- g_matrix_to_a_matrix(g_mat, spec_den_data[["a_coef"]])
+		
+		# calculate lambda eigenvalues
+		lambda_vec <- -colSums(rates[rownames(spec_den_data[["lambda_coef"]])]*spec_den_data[["lambda_coef"]])
+		
+		# update eigenvalues to account for molecular tumbling
+		lambda_prime_vec <- lambda_vec - rates["kc"]
+		
+		a_matrix_to_sigma(a_mat, lambda_prime_vec, proton_mhz)
+	})
+}
+
+#' Calculate sigma restraint energy from atomic coordinates
+#'
+#' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
+#' @param rates named numeric vector with rates
+#' @param spec_den_data_list list of data for calculating spectral density functions
+#' @param proton_mhz spectrometer proton field strength in MHz
+#' @param loss_func loss function to use
+#' @param ... additional parameters passed to `loss_func`
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return total restraint energy calculated using `loss_func`
+#'
+#' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array 
+#' (atoms, xyz, models).
+#'
+#' Testing with `deriv_check` showed a slight systematic (~0.2% underestimation) of the 
+#' gradient between two methyl groups. Perhaps there's some unaccounted correlation in 
+#' the purely additive derivative calculation?
+#'
+#' @export
+coord_array_to_sigma_energy <- function(coord_array, rates, spec_den_data_list, proton_mhz, loss_func = power_scaled_loss, ..., gradient=FALSE) {
+
+	# intermediate derivatives that need to be captured for back-propagation
+	d_array_list <- g_matrix_list <- sigma_vector_list <- vector("list", length(spec_den_data_list))
+	
+	for (i in seq_along(spec_den_data_list)) {
+
+		# calculate internuclear vectors
+		r_array <- coord_array_to_r_array(coord_array*1e-10, spec_den_data_list[[i]][["atom_pairs"]][,1:2,drop=FALSE])
+	
+		# calculate dipole-dipole interaction tensors
+		d_array_list[[i]] <- r_array_to_d_array(r_array, gradient=gradient)
+	
+		# calculate the factor by which the number of models should be expanded
+		n_shift <- ncol(spec_den_data_list[[i]][["groupings"]])/dim(coord_array)[3]
+	
+		# shift tensor components from atom pairs into virtual models
+		d_array_shifted <- array_shift(d_array_list[[i]], n_shift)
+	
+		# calculate norm squared for different groupings of dipole-dipole interaction tensors
+		g_matrix_list[[i]] <- d_array_to_g_matrix(d_array_shifted, spec_den_data_list[[i]][["groupings"]], gradient=gradient)
+		
+		# calculate matrix of a values
+		a_matrix <- g_matrix_to_a_matrix(g_matrix_list[[i]], spec_den_data_list[[i]][["a_coef"]])
+		
+		# calculate lambda eigenvalues
+		lambda_vector <- -colSums(rates[rownames(spec_den_data_list[[i]][["lambda_coef"]])]*spec_den_data_list[[i]][["lambda_coef"]])
+		
+		# update eigenvalues to account for molecular tumbling
+		lambda_prime_vector <- lambda_vector - rates["kc"]
+		
+		# calculate cross relaxation rates
+		sigma_vector_list[[i]] <- a_matrix_to_sigma(a_matrix, lambda_prime_vector, proton_mhz, gradient=TRUE)
+	}
+	
+	# combine sigmas into a single vector
+	sigma_vector <- unlist(sigma_vector_list)
+
+	# combine target sigmas into a single vector
+	sigma0_vector <- unlist(lapply(spec_den_data_list, function(x) {
+		idx <- seq_len(nrow(x$atom_pairs)/(ncol(x$groupings)/dim(coord_array)[[3]]))
+		x$atom_pairs[idx,"sigma"]
+	}))
+	
+	# calculate energies from the sigma vectors
+	energy_vector <- loss_func(sigma_vector, sigma0_vector, ..., gradient=gradient)
+	
+	# return the sum of all the individual restraint energies
+	value <- sum(energy_vector)
+	
+	if (gradient) {
+		
+		# calculate starting offsets within sigma gradients
+		sigma_vector_list_lengths <- sapply(sigma_vector_list, length)
+		start_idx <- cumsum(c(1, sigma_vector_list_lengths[-length(sigma_vector_list)]))
+	
+		# initialize empty gradient with dimensions equal to input coordinates
+		d_energy_d_coord_array <- coord_array
+		d_energy_d_coord_array[] <- 0
+
+		for (i in seq_along(spec_den_data_list)) {
+
+			# extract particular segment of energy gradient
+			d_energy_d_sigma <- attr(energy_vector, "gradient")[seq(start_idx[i], length.out=length(sigma_vector_list[[i]]))]
+			
+			# back-propagate derivatives from sigma to a matrix
+			d_energy_d_a_matrix <- a_matrix_to_sigma_backprop(attr(sigma_vector_list[[i]], "gradient"), d_energy_d_sigma)
+			
+			# back-propagate derivatives from a array to g matrix
+			d_energy_d_g_matrix <- g_matrix_to_a_matrix_backprop(spec_den_data_list[[i]][["a_coef"]], d_energy_d_a_matrix)
+			
+			# back-propagate derivatives from g matrix to d array
+			d_energy_d_d_array <- d_array_to_g_matrix_backprop(attr(g_matrix_list[[i]], "gradient"), d_energy_d_g_matrix)
+			
+			# because of the way the arrays are structured shifting back isn't necessary
+			# calculate the factor by which the number of models should be expanded
+			#n_shift <- ncol(spec_den_data_list[[i]][["groupings"]])/dim(coord_array)[3]
+			
+			# shift tensor components from virtual models back to atom pairs
+			#if (n_shift > 1) {
+			#	d_energy_d_d_array <- array_shift(d_energy_d_d_array, dnames=dimnames(d_array_list[[i]]))
+			#}
+		
+			# back-propagate derivatives from d array to r array
+			d_energy_d_r_array <- r_array_to_d_array_backprop(attr(d_array_list[[i]], "gradient"), d_energy_d_d_array)
+		
+			# accumulate back-propagated derivatives from r array into coord array gradient
+			d_energy_d_coord_array <- coord_array_to_r_array_backprop(d_energy_d_coord_array, spec_den_data_list[[i]][["atom_pairs"]][,1:2,drop=FALSE], d_energy_d_r_array)
+		}
+		
+		# set coordinate gradient to accumulated values
+		attr(value, "gradient") <- d_energy_d_coord_array*1e-10
 	}
 	
 	value

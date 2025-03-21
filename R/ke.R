@@ -564,6 +564,30 @@ coord_array_to_r_array <- function(coord_array, atom_pairs) {
 	r_array
 }
 
+#' Back-propagate energy derivative from r array to coordinates
+#'
+#' @param d_d_array_d_r_array 3D array (atoms, xyz, models) to accumulate derivatives into
+#' @param atom_pairs matrix with each row having the names or indices of an atom pair (first dimension in `coord_array`
+#' @param d_energy_d_r_array 3D array (pairs, models, xyz)
+#'
+#' @return 3D array (pairs, xyz, models) with d_energy_d_coord_array
+coord_array_to_r_array_backprop <- function(d_energy_d_coord_array, atom_pairs, d_energy_d_r_array) {
+
+	#print(str(d_energy_d_coord_array))
+	#print(str(d_energy_d_r_array))
+	# propagate the internuclear vector derivatives back onto the atomic coordinates
+	for (i in seq_len(dim(d_energy_d_r_array)[1])) {
+		
+		pair_grad <- t(d_energy_d_r_array[i,,])
+		# first component is subtracted so derivative is too
+		d_energy_d_coord_array[atom_pairs[i,1],,] <- d_energy_d_coord_array[atom_pairs[i,1],,] - pair_grad
+		# second component is added so derivative is too
+		d_energy_d_coord_array[atom_pairs[i,2],,] <- d_energy_d_coord_array[atom_pairs[i,2],,] + pair_grad
+	}
+	
+	d_energy_d_coord_array
+}
+
 #' Calculate dipole-dipole interaction tensors from internuclear vectors
 #'
 #' @details
@@ -649,6 +673,22 @@ r_array_to_d_array <- function(r_array, gradient=FALSE) {
 	value
 }
 
+#' Back-propagate energy derivative from d array to r array
+#'
+#' @param d_d_array_d_r_array 4D array (pairs, models, tensor elements, xyz) from
+#'    `gradient` attribute of `r_array_to_d_array()`
+#' @param d_energy_d_d_array 3D array (pairs, models, tensor elements)
+#'
+#' @return 3D array (pairs, models, xyz) with d_energy_d_r_array
+r_array_to_d_array_backprop <- function(d_d_array_d_r_array, d_energy_d_d_array) {
+
+	# calculate de/dr = dd/dr * de/dd for each xyz component of the internuclear vectors
+	# coerce d_energy_d_d_array to a vector so it gets repeated over dd/dr
+	d_energy_d_r_array_all <- d_d_array_d_r_array*as.vector(d_energy_d_d_array)
+	# sum the individual interaction tensor component derivatives associated with x, y, and z
+	apply(d_energy_d_r_array_all, c(1,2,4), sum)
+}
+
 #' Calculate group norm squared from dipole-dipole interaction tensors
 #'
 #' @param d_array 3D array (pairs, models, tensor elements) with interaction tensors
@@ -710,6 +750,54 @@ d_array_to_g <- function(d_array, grouping, gradient=FALSE) {
 	}
 	
 	value
+}
+
+#' Calculate group norm squared from dipole-dipole interaction tensors
+#'
+#' @param d_array 3D array (pairs, models, tensor elements) with interaction tensors
+#' @param grouping_mat integer matrix (groups, models) giving groupings of models to average interaction tensors
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return vector with norm squared for each atom pair. 
+#'
+#' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array (pairs, models, tensor elements).
+#'
+#' @export
+d_array_to_g_matrix <- function(d_array, grouping_mat, gradient=FALSE) {
+
+	g_list <- apply(grouping_mat, 1, d_array_to_g, d_array=d_array, gradient=gradient, simplify=FALSE)
+	
+	value <- simplify2array(g_list)
+	
+	if (!is.matrix(value)) {
+		value <- matrix(value, nrow=dim(d_array)[1])
+	}
+	
+	if (gradient) {
+	
+		attr(value, "gradient") <- simplify2array(lapply(g_list, attr, "gradient"))
+	}
+	
+	value
+}
+
+#' Back-propagate energy derivative from g matrix to d array
+#'
+#' @param d_g_matrix_d_d_array 4D array (pairs, models, tensor components, groups) fom
+#'    `gradient` attribute of `d_array_to_g_matrix()`
+#' @param d_energy_d_g_matrix matrix (pairs, groups)
+#'
+#' @return 3D array (pairs, models, tensor elements) with d_energy_d_d_array
+d_array_to_g_matrix_backprop <- function(d_g_matrix_d_d_array, d_energy_d_g_matrix) {
+
+	# calculate de/dd = dg/dd * de/dg for all individual interaction tensor components
+	d_energy_d_d_array <- 0
+	# sum the contributions from the different norm squared values
+	for (i in seq_len(dim(d_g_matrix_d_d_array)[4])) {
+		d_energy_d_d_array <- d_energy_d_d_array + d_g_matrix_d_d_array[,,,i]*d_energy_d_g_matrix[,i]
+	}
+	
+	d_energy_d_d_array
 }
 
 #' Calculate restraint energy from group norm squared values
@@ -861,6 +949,62 @@ coord_array_to_g_energy <- function(coord_array, atom_pairs, grouping_list, g0, 
 		}
 		
 		attr(value, "gradient") <- grad
+	}
+	
+	value
+}
+
+#' Calculate g value restraint energy from atomic coordinates
+#'
+#' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
+#' @param atom_pairs matrix with each row having the names or indices of an atom pair (first dimension in `coord_array`)
+#' @param grouping_mat integer matrix (groups, models) giving groupings of models to average interaction tensors
+#' @param g0 target group norm squared values
+#' @param loss_func loss function to use to calculate energy
+#' @param ... additional parameters passed to `loss_func`
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return total restraint energy calculated using `loss_func`
+#'
+#' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array (atoms, xyz, models).
+#'
+#' @export
+coord_array_to_g_energy_refactored <- function(coord_array, atom_pairs, grouping_mat, g0, loss_func = power_scaled_loss, ..., gradient=FALSE) {
+
+	# calculate internuclear vectors
+	r_array <- coord_array_to_r_array(coord_array, atom_pairs)
+	
+	# calculate dipole-dipole interaction tensors
+	d_array <- r_array_to_d_array(r_array, gradient=gradient)
+	
+	# calculate norm squared for different groupings of dipole-dipole interaction tensors
+	g_matrix <- d_array_to_g_matrix(d_array, grouping_mat, gradient=gradient)
+	
+	# calculate energies from the norm squared values
+	energy_matrix <- loss_func(g_matrix, g0, ..., gradient=gradient)
+	
+	# return the sum of all the individual restraint energies
+	value <- sum(energy_matrix)
+	
+	if (gradient) {
+	
+		# initialize empty gradient with dimensions equal to input coordinates
+		d_energy_d_coord_array <- coord_array
+		d_energy_d_coord_array[] <- 0
+
+		d_energy_d_g_matrix <- attr(energy_matrix, "gradient")
+
+		# back-propagate derivatives from g matrix to d array
+		d_energy_d_d_array <- d_array_to_g_matrix_backprop(attr(g_matrix, "gradient"), d_energy_d_g_matrix)
+		
+		# back-propagate derivatives from d array to r array
+		d_energy_d_r_array <- r_array_to_d_array_backprop(attr(d_array, "gradient"), d_energy_d_d_array)
+		
+		# accumulate back-propagated derivatives from r array to coord array gradient
+		d_energy_d_coord_array <- coord_array_to_r_array_backprop(d_energy_d_coord_array, atom_pairs, d_energy_d_r_array)
+		
+		# set coordinate gradient to accumulated values
+		attr(value, "gradient") <- d_energy_d_coord_array
 	}
 	
 	value

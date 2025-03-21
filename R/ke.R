@@ -786,7 +786,7 @@ power_scaled_loss <- function(x, x0, p=1, k=1, gradient=FALSE) {
 #' @return matrix (pairs, groupings) with group norm squared values
 #'
 #' @export
-coord_array_to_g <- function(coord_array, atom_pairs, grouping_list) {
+coord_array_to_g_matrix <- function(coord_array, atom_pairs, grouping_list) {
 
 	r_array <- coord_array_to_r_array(coord_array, atom_pairs)
 	
@@ -797,7 +797,7 @@ coord_array_to_g <- function(coord_array, atom_pairs, grouping_list) {
 	simplify2array(g_list)
 }
 
-#' Calculate restraint energy from atomic coordinates
+#' Calculate g value restraint energy from atomic coordinates
 #'
 #' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
 #' @param atom_pairs matrix with each row having the names or indices of an atom pair (first dimension in `coord_array`)
@@ -811,7 +811,7 @@ coord_array_to_g <- function(coord_array, atom_pairs, grouping_list) {
 #' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array (atoms, xyz, models).
 #'
 #' @export
-coord_array_to_energy <- function(coord_array, atom_pairs, grouping_list, g0, k, gradient=FALSE) {
+coord_array_to_g_energy <- function(coord_array, atom_pairs, grouping_list, g0, k, gradient=FALSE) {
 
 	# calculate internuclear vectors
 	r_array <- coord_array_to_r_array(coord_array, atom_pairs)

@@ -66,6 +66,19 @@ for (i in seq_along(spec_den_data_list)) {
 	spec_den_data_list[[i]]$atom_pairs[seq_along(sigma_synthetic[[i]]), "sigma"] <- sigma_synthetic[[i]]
 }
 
+# write out input data if input_dir is set to something other than NULL
+input_dir <- NULL
+if (!is.null(input_dir)) {
+	for (i in seq_along(spec_den_data_list)) {
+	
+		type_name <- names(spec_den_data_list)[i]
+		write.csv(spec_den_data_list[[i]][["atom_pairs"]], file.path(input_dir, paste0(type_name, "_atom_pairs.csv")), row.names=FALSE, na="")
+		write.table(spec_den_data_list[[i]][["groupings"]], file.path(input_dir, paste0(type_name, "_groupings.csv")), sep=",", row.names=FALSE, col.names=FALSE)
+		write.csv(spec_den_data_list[[i]][["a_coef"]], file.path(input_dir, paste0(type_name, "_a_coef.csv")), row.names=FALSE)
+		write.csv(spec_den_data_list[[i]][["lambda_coef"]], file.path(input_dir, paste0(type_name, "_lambda_coef.csv")))
+	}
+}
+
 sigma_energy <- coord_array_to_sigma_energy(aperm(coord_array, c(2,1,3)), ke_data$rates, spec_den_data_list, proton_mhz, gradient=TRUE)
 
 if (!"sigma_deriv_check" %in% ls()) {

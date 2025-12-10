@@ -11,11 +11,19 @@ An object of class \code{character} of length 20.
 An object of class \code{character} of length 20.
 }
 \usage{
-aa1_to_aa3[aa1]
+aa1_to_aa3
 
-aa3_to_aa1[aa3]
+aa3_to_aa1
 }
 \description{
 Convert between one and three letter residue names
+}
+\examples{
+aa1_to_aa3["W"]
+aa1_to_aa3[c("W", "F", "Y")]
+
+aa3_to_aa1["TRP"]
+aa3_to_aa1[c("TRP", "PHE", "TYR")]
+
 }
 \keyword{datasets}

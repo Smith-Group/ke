@@ -20,6 +20,8 @@ coord_proton_groups(
 )
 }
 \arguments{
+\item{coord_mat}{3xN matrix with a column for every atom}
+
 \item{alpha_group}{logical indicating whether to group aliphatic alpha protons}
 
 \item{beta_group}{logical indicating whether to group aliphatic beta protons}
@@ -41,8 +43,6 @@ coord_proton_groups(
 \item{include}{character vector of exchangeable protons to be explicitly included}
 
 \item{amber}{logical indicating if names are from Amber force field}
-
-\item{coord}{3xN matrix with a column for every atom}
 }
 \value{
 Vector with selected protons. The names give the group the proton belongs to. The name will be the heavy atom name if all of the protons bound to that heavy atom are in the same group. Otherwise, the name will be the proton name.

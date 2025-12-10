@@ -1,14 +1,20 @@
 #' Convert between one and three letter residue names 
 #'
-#' @usage aa1_to_aa3[aa1]
-#'
+#' @docType data
 #' @rdname residue_names
+#' @examples
+#' aa1_to_aa3["W"]
+#' aa1_to_aa3[c("W", "F", "Y")]
+#'
 #' @export
 aa1_to_aa3 <- c("TRP", "PHE", "TYR", "MET", "LEU", "ILE", "VAL", "ALA", "GLY", "SER", "THR", "ARG", "LYS", "HIS", "ASN", "GLN", "ASP", "GLU", "PRO", "CYS")
 
-#' @usage aa3_to_aa1[aa3]
-#'
+#' @docType data
 #' @rdname residue_names
+#' @examples
+#' aa3_to_aa1["TRP"]
+#' aa3_to_aa1[c("TRP", "PHE", "TYR")]
+#'
 #' @export
 aa3_to_aa1 <- c("W", "F", "Y", "M", "L", "I", "V", "A", "G", "S", "T", "R", "K", "H", "N", "Q", "D", "E", "P", "C")
 
@@ -211,6 +217,7 @@ coord_resseq <- function(coord) {
 #' Determine whether an atom is rapidly exchangeable at neutral pH
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#' @param amber logical indicating whether atom names are from AMBER force field
 #'
 #' @export
 coord_rapidly_exchangeable <- function(coord, amber=FALSE) {
@@ -334,7 +341,7 @@ read_ensemble <- function(pdb_files, model_idx=NULL, proton_only=FALSE) {
 
 #' Select groups of protons that are typically detectable with unique chemical shifts
 #'
-#' @param coord 3xN matrix with a column for every atom
+#' @param coord_mat 3xN matrix with a column for every atom
 #' @param alpha_group logical indicating whether to group aliphatic alpha protons
 #' @param beta_group logical indicating whether to group aliphatic beta protons
 #' @param gamma_group logical indicating whether to group aliphatic gamma protons
@@ -410,7 +417,7 @@ coord_proton_groups <- function(coord_mat, alpha_group=FALSE, beta_group=FALSE, 
 
 #' Calculate bond distances between a set of atoms
 #'
-#' @param coord 3xN matrix with a column for every atom
+#' @param coord_mat 3xN matrix with a column for every atom
 #' @param depth maximum bond distance to calculate
 #'
 #' @return NxN matrix with bond distances between atoms (or NA if not calculated)
@@ -566,7 +573,7 @@ coord_array_to_r_array <- function(coord_array, atom_pairs) {
 
 #' Back-propagate energy derivative from r array to coordinates
 #'
-#' @param d_d_array_d_r_array 3D array (atoms, xyz, models) to accumulate derivatives into
+#' @param d_energy_d_coord_array 3D array (atoms, xyz, models) to accumulate derivatives into
 #' @param atom_pairs matrix with each row having the names or indices of an atom pair (first dimension in `coord_array`
 #' @param d_energy_d_r_array 3D array (pairs, models, xyz)
 #'
@@ -804,7 +811,6 @@ d_array_to_g_matrix_backprop <- function(d_g_matrix_d_d_array, d_energy_d_g_matr
 #'
 #' @param g_matrix matrix of g values with columns associated with different groupings
 #' @param a_coef coefficients used for calculating a values
-#' @param gradient a logical value indicating whether to calculate the derivative
 g_matrix_to_a_matrix <- function(g_matrix, a_coef) {
 
 	a_matrix <- matrix(0, nrow=nrow(g_matrix), ncol=ncol(a_coef), dimnames=list(rownames(g_matrix), colnames(a_coef)))
@@ -821,7 +827,7 @@ g_matrix_to_a_matrix <- function(g_matrix, a_coef) {
 #' Back-propagate energy derivative from a matrix to g matrix
 #'
 #' @param a_coef coefficients used for calculating a values
-#' @param d_energy_d_sigma matrix (pairs, eigenvalues)
+#' @param d_energy_d_a_matrix matrix (pairs, eigenvalues)
 #'
 #' @return matrix (pairs, groupings) with d_energy_d_g_matrix
 g_matrix_to_a_matrix_backprop <- function(a_coef, d_energy_d_a_matrix) {
@@ -913,7 +919,7 @@ g_to_energy <- function(g, g0, k=1, gradient=FALSE) {
 #' @param x numerical values to be rescaled
 #' @param p numeric power to raise the values to, usually 1 or less
 #'
-#' @return \deqn{ ( ( |x| + 1 )^p - 1 ) \sgn x }
+#' @return \deqn{ ( ( |x| + 1 )^p - 1 ) \operatorname{sgn}(x) }
 power_scale <- function(x, p) {
 	( ( abs(x) + 1 )^p - 1 ) * sign(x)
 }
@@ -926,17 +932,20 @@ power_scale <- function(x, p) {
 #' @param k force constant
 #' @param gradient a logical value indicating whether to calculate the derivative
 #'
-#' @return \deqn{ k \left ( ( ( |x| + 1 )^p - 1 ) \sgn x - ( ( |x_0| + 1 )^p - 1 ) \sgn x_0 \right )^2 }
+#' @return \deqn{ k \left ( ( ( |x| + 1 )^p - 1 ) \operatorname{sgn}(x) - ( ( |x_0| + 1 )^p - 1 ) \operatorname{sgn}(x_0) \right )^2 }
 #'
 #' @examples
 #' x <- seq(-10, 10, by=0.1)
-#' loss_x <- loss(x, 2, 0.25, gradient=TRUE)
+#' loss_x <- sapply(x, power_scaled_loss, 2, 0.25)
+#' loss_x_grad <- power_scaled_loss(x, 2, 0.25, gradient=TRUE)
 #' par(mfrow=c(2, 1))
 #' plot(x, loss_x, type="l", ylab="loss")
-#' plot(x, attr(loss_x, "gradient"), type="l", ylab="dloss/dx")
+#' plot(x, attr(loss_x_grad, "gradient"), type="l", ylab="dloss/dx")
 #' points(x[-1]-mean(diff(x))/2, diff(loss_x)/mean(diff(x)), type="l", col="blue")
 #' abline(h = 0, col="gray")
 #' legend("bottomright", legend=c("Analytical", "Finite Difference"), bty="n", lwd=1, col=c("black", "blue"))
+#'
+#' @export
 power_scaled_loss <- function(x, x0, p=1, k=1, gradient=FALSE) {
 	
 	expr1 <- ( ( abs(x) + 1 )^p - 1 ) * sign(x) - ( ( abs(x0) + 1 )^p - 1 ) * sign(x0)
@@ -1096,20 +1105,20 @@ coord_array_to_g_energy_refactored <- function(coord_array, atom_pairs, grouping
 
 #' Read data for calculating spectral density functions
 #'
-#' @param path to prefix of four CSV files
+#' @param prefix_path to prefix of four CSV files
 #'
-#' @value a list with elements: `atom_pairs`, `groupings`, `a_coef`, and `lambda_coef`
+#' @return a list with elements: `atom_pairs`, `groupings`, `a_coef`, and `lambda_coef`
 #'
 #' @export
 read_spec_den_data <- function(prefix_path) {
 
-	atom_pairs <- read.csv(paste0(prefix_path, "_atom_pairs.csv"))
-	groupings <- unname(as.matrix(read.csv(paste0(prefix_path, "_groupings.csv"), header=FALSE, row.names=NULL)))
-	a_coef <- as.matrix(read.csv(paste0(prefix_path, "_a_coef.csv"), check.names=FALSE))
-	lambda_coef <- as.matrix(read.csv(paste0(prefix_path, "_lambda_coef.csv"), check.names=FALSE, row.names=1))
+	atom_pairs <- utils::read.csv(paste0(prefix_path, "_atom_pairs.csv"))
+	groupings <- unname(as.matrix(utils::read.csv(paste0(prefix_path, "_groupings.csv"), header=FALSE, row.names=NULL)))
+	a_coef <- as.matrix(utils::read.csv(paste0(prefix_path, "_a_coef.csv"), check.names=FALSE))
+	lambda_coef <- as.matrix(utils::read.csv(paste0(prefix_path, "_lambda_coef.csv"), check.names=FALSE, row.names=1))
 	
 	list(
-		atom_pairs = atom_pair_sigma,
+		atom_pairs = atom_pairs,
 		groupings = groupings,
 		a_coef = a_coef,
 		lambda_coef = lambda_coef

@@ -10,6 +10,8 @@
 #' @examples
 #' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
 #' find_methyl_permutations(dimnames(pdb2lum)[[2]])
+#'
+#' @export
 find_methyl_permutations <- function(atomids) {
 
 	pos_3 <- gregexpr("3", substr(atomids, 1, 4))
@@ -55,6 +57,8 @@ find_methyl_permutations <- function(atomids) {
 #' @examples
 #' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
 #' find_aromatic_permutations(dimnames(pdb2lum)[[2]])
+#'
+#' @export
 find_aromatic_permutations <- function(atomids) {
 
 	tyr_phe_hd1 <- grep("( HD1 PHE| HD1 TYR)", atomids, value=TRUE)
@@ -88,6 +92,8 @@ find_aromatic_permutations <- function(atomids) {
 #' perm_list <- make_atom_perm_list(dimnames(pdb2lum)[[2]], c(perm_methyl, perm_aro))
 #' perm_list[[3]][unlist(lapply(perm_methyl, "[", , 1)),]
 #' perm_list[[2]][unlist(lapply(perm_aro, "[", , 1)),]
+#'
+#' @export
 make_atom_perm_list <- function(atomids, atom_permutations) {
 
 	perm_lengths <- sapply(atom_permutations, ncol)
@@ -118,6 +124,8 @@ make_atom_perm_list <- function(atomids, atom_permutations) {
 #' perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #' unique_atom_map(perm_methyl[[1]])
 #' unique_atom_map(perm_aro[[1]])
+#'
+#' @export
 unique_atom_map <- function(permutation) {
 
 	#print(permutation)
@@ -143,12 +151,15 @@ unique_atom_map <- function(permutation) {
 #' @param permutation single permutation matrix
 #'
 #' This is useful for calculating interactions within a permutation group
+#'
 #' @examples
 #' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
 #' perm_methyl <- find_methyl_permutations(dimnames(pdb2lum)[[2]])
 #' perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #' unique_atom_pair_map(perm_methyl[[1]])
 #' unique_atom_pair_map(perm_aro[[1]])
+#'
+#' @export
 unique_atom_pair_map <- function(permutation) {
 
 	#print(permutation)
@@ -186,6 +197,8 @@ unique_atom_pair_map <- function(permutation) {
 #' rate_mat <- rate_mat_simple(4, c("a", "b", "c", "d"))
 #' rate_mat <- rate_mat_diag(rate_mat)
 #' eigen(rate_mat)
+#'
+#' @export
 rate_mat_simple <- function(k, n_names) {
 
 	rate_mat <- matrix(k/(length(n_names)), nrow=length(n_names), ncol=length(n_names), dimnames=list(n_names, n_names))
@@ -204,6 +217,8 @@ rate_mat_simple <- function(k, n_names) {
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
 #' rate_mat <- rate_mat_diag(rate_mat)
 #' eigen(rate_mat)
+#'
+#' @export
 rate_mat_intra_inter <- function(group_vec, k_intra, k_inter) {
 
 	rate_mat <- matrix(k_inter/length(group_vec), nrow=length(group_vec), ncol=length(group_vec), dimnames=list(names(group_vec), names(group_vec)))
@@ -222,8 +237,8 @@ rate_mat_intra_inter <- function(group_vec, k_intra, k_inter) {
 
 #' Calculate Kronecker product of two transition rate matrices
 #'
-#' @param trans_rate_a first transition rate matrix
-#' @param trans_rate_b second transition rate matrix
+#' @param rate_mat_a first transition rate matrix
+#' @param rate_mat_b second transition rate matrix
 #'
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
@@ -231,6 +246,8 @@ rate_mat_intra_inter <- function(group_vec, k_intra, k_inter) {
 #' rate_mat <- rate_mat_kronecker(rate_mat_fast, rate_mat_slow)
 #' rate_mat <- rate_mat_diag(rate_mat)
 #' eigen(rate_mat)
+#'
+#' @export
 rate_mat_kronecker <- function(rate_mat_a, rate_mat_b) {
 
 	a_names <- rep(colnames(rate_mat_a), ncol(rate_mat_b))
@@ -252,7 +269,9 @@ rate_mat_kronecker <- function(rate_mat_a, rate_mat_b) {
 
 #' Update transition rate diagonal using rates
 #'
-#' @param trans_rate_mat square transition rate matrix
+#' @param rate_mat square transition rate matrix
+#'
+#' @export
 rate_mat_diag <- function(rate_mat) {
 
 	for (i in seq_len(nrow(rate_mat))) {
@@ -267,13 +286,15 @@ rate_mat_diag <- function(rate_mat) {
 
 #' Get counts enabling calculation of eigenvalues from individual rates
 #'
-#' @param trans_rate 
-#' @param all_permutations 
-#' @param eps_factor 
+#' @param trans_rate transition rate matrix
+#' @param all_permutations all possible permutations (i.e. methyl, aromatic) applied
+#' @param eps_factor rates must differ by this amount times the lowest rate
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
 #' get_rate_count_mat(rate_mat, NULL)
+#'
+#' @export
 get_rate_count_mat <- function(trans_rate, all_permutations, eps_factor=0.5) {
 
 	base_trans_rates <- -eigen(rate_mat_diag(trans_rate))$values[-1]
@@ -384,8 +405,8 @@ get_rate_groups <- function(rates, eps_factor=0.5, eps_log10=NULL) {
 
 #' Determine subsets of states within transition rate matrices
 #'
-#' @trans_rate_eigen list with `values` and `vectors` as returned by `eigen()`
-#' @rate_groups list with numerically equivalent rates organized into groups
+#' @param trans_rate_eigen list with `values` and `vectors` as returned by `eigen()`
+#' @param rate_groups list with numerically equivalent rates organized into groups
 #'
 #' This only works with rate matrices returned by `rate_mat_simple()` and 
 #' `rate_mat_intra_inter`. It does not work with `rate_mat_kronecker()`.
@@ -394,6 +415,8 @@ get_rate_groups <- function(rates, eps_factor=0.5, eps_log10=NULL) {
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
 #' rate_mat <- rate_mat_diag(rate_mat)
 #' calc_subset_mat(eigen(rate_mat))
+#'
+#' @export
 calc_subset_mat <- function(trans_rate_eigen, rate_groups=get_rate_groups(-trans_rate_eigen$values[-1])) {
 
 	state_pop <- trans_rate_eigen$vectors[,1]^2
@@ -432,14 +455,16 @@ calc_subset_mat <- function(trans_rate_eigen, rate_groups=get_rate_groups(-trans
 
 #' Expand subset matrix consistent with applying Kronecker product to original rate matrix
 #'
-#' @param rate_subset_mat
-#' @param permutation_counts
+#' @param rate_subset_mat matrix (ensemble members, rates) giving the subset each ensemble member belongs to
+#' @param permutation_counts vector with counts of states and names giving the rate
 #'
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
 #' rate_mat_fast <- rate_mat_diag(rate_mat_fast)
 #' subset_mat <- calc_subset_mat(eigen(rate_mat_fast))
 #' expand_subset_mat(subset_mat, list("4"=2))
+#'
+#' @export
 expand_subset_mat <- function(rate_subset_mat, permutation_counts) {
 	
 	permutation_subset_mat <- as.matrix(expand.grid(lapply(permutation_counts, seq_len)))
@@ -459,16 +484,18 @@ expand_subset_mat <- function(rate_subset_mat, permutation_counts) {
 
 #' Get `k` coefficients for creating linear combinations of `a` values from `g` values
 #' 
-#' @param trans_rate_eigen
-#' @param all_rates 
+#' @param trans_rate_eigen list with `values` and `vectors` as returned by `eigen()`
+#' @param all_rates numeric vector of all rates
 #' @param subset_mat created by `calc_subset_mat()` or `expand_subset_mat()`
-#' @param validate
-#' @param eps_factor
+#' @param validate check to see whether result is correct using another method
+#' @param eps_factor epsilon used for heuristically matching rates generated in two ways
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
 #' rate_mat <- rate_mat_diag(rate_mat)
 #' get_eigen_groups(eigen(rate_mat))
+#'
+#' @export
 get_eigen_groups <- function(trans_rate_eigen, all_rates=NULL, subset_mat=NULL, validate=FALSE, eps_factor=0.5) {
 	
 	state_pop <- trans_rate_eigen$vectors[,1]^2
@@ -620,11 +647,10 @@ get_eigen_groups <- function(trans_rate_eigen, all_rates=NULL, subset_mat=NULL, 
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
 #' rate_mat_slow <- rate_mat_simple(4, c("s1", "s2"))
-#' rate_mat <- rate_mat_kronecker(rate_mat_fast, rate_mat_slow)
-#' all_rates <- unique(as.numeric(colnames(get_rate_count_mat(rate_mat, NULL))))
-#' rate_data_base <- get_rate_data(rate_mat_fast, rate_mat_slow)
-#' rate_mat <- rate_mat_diag(rate_mat)
-#' eigen(rate_mat)
+#' rate_data_base <- get_rate_data(rate_mat_fast)
+#' rate_data <- get_rate_data(rate_mat_slow, rate_data_base)
+#'
+#' @export
 get_rate_data <- function(trans_rate, parent_data=NULL, all_rates=NULL, validate=FALSE) {
 
 	if (is.null(parent_data)) {
@@ -700,7 +726,7 @@ update_numeric_names <- function(trial_names, master_names) {
 #' @param rate_data list returned by `get_rate_data()`
 #' @param rate_count_mat matrix returned by `get_rate_count_mat()` including methyl and
 #'     aromatic rates
-#' @param numeric vector whose names give the rates to be used
+#' @param rates_named numeric vector whose names give the rates to be used
 #'
 #' @return a list with elements: `groupings`, `a_coef`, and `lambda_coef`
 rate_data_to_mat_list <- function(rate_data, rate_count_mat, rates_named = NULL) {
@@ -740,7 +766,7 @@ rate_data_to_mat_list <- function(rate_data, rate_count_mat, rates_named = NULL)
 #' Create list of equivalent atoms
 #'
 #' @param atomids character vector of atom IDs (PDB columns 13-27)
-#' @param atom_permutations list of permutations from `find_methyl_permutations()` and 
+#' @param permutations list of permutations from `find_methyl_permutations()` and 
 #'    `find_aromatic_permutations()`
 #'
 #' @return list of atomid vectors where all atomids in a given vector are equivalent
@@ -764,10 +790,10 @@ make_equiv_list <- function(atomids, permutations) {
 
 #' Update names of equivalent atoms
 #'
-#' @param equiv_list
+#' @param equiv_list list of atomid vectors where all atomids in a given vector are equivalent
 #' @param restype logical indicating whether to prefix with one-letter residue type
 #' @param sep character giving separator between residue and atom names
-#' @param atom_format represent multiatoms with "Q" (`q`) or with regular expression (`re`) syntax
+#' @param multiatom_format represent multiatoms with "Q" (`q`) or with regular expression (`re`) syntax
 #'
 #' @return `equiv_list` with updated names
 equiv_list_name <- function(equiv_list, restype = TRUE, sep = ":", multiatom_format = c("q", "re")) {
@@ -803,13 +829,13 @@ equiv_list_name <- function(equiv_list, restype = TRUE, sep = ":", multiatom_for
 
 #' Encapsulate kinetic ensemble data into a list data structure
 #'
-#' @param coord_array 
-#' @param base_rate_mat 
-#' @param base_rates 
+#' @param coord_array 3D array (xyz, atoms, models) with atomic coordinates
+#' @param base_rate_mat rate matrix for transitions between ensemble members
+#' @param base_rates named vector of rates
 #' @param kc reciprocal of molecular tumbling time
 #' @param kmethyl methyl rotation eigenvalue
 #' @param karo phenylalanine/tyrosine flip eigenvalue
-#' @param proton_mhz 
+#' @param proton_mhz proton frequency in MHz
 #' @param mix_times mixing times to calculate
 make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1/1e-12, karo = 1/100e-6, proton_mhz, mix_times) {
 
@@ -841,7 +867,7 @@ make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1
 #'    `ke_data$equiv_list`
 #' @param perm_internal logical indicating whether to include atom pair internal to
 #'    permutation groups
-#' @param optional numeric vector of cross relaxation rates
+#' @param sigma optional numeric vector of cross relaxation rates
 make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, sigma = NULL) {
 
 	# create rate matrices
@@ -988,7 +1014,7 @@ test_toy <- function() {
 test_random <- function() {
 
 	if (!"r_mat_check" %in% ls()) {
-		r_mat_check <- matrix(rnorm(30), ncol=3)
+		r_mat_check <- matrix(stats::rnorm(30), ncol=3)
 		r_mat_check <- r_mat_check/sqrt(rowSums(r_mat_check^2))
 	}
 
@@ -1018,10 +1044,10 @@ test_eros3 <- function() {
 		g2=d_array_to_g(eros3_sub_d_array, eros3_grouping_list[[2]], gradient=TRUE)
 	)
 
-	eros3_sub_g <- coord_array_to_g(eros3_sub_coord, eros3_sub_atom_pairs, eros3_grouping_list)
+	eros3_sub_g <- coord_array_to_g_matrix(eros3_sub_coord, eros3_sub_atom_pairs, eros3_grouping_list)
 
 	# get g values using M1 twice
-	eros3_sub_1_g <- coord_array_to_g(eros3_sub_coord[,,c(1,1)], eros3_sub_atom_pairs, eros3_grouping_list)
+	eros3_sub_1_g <- coord_array_to_g_matrix(eros3_sub_coord[,,c(1,1)], eros3_sub_atom_pairs, eros3_grouping_list)
 
 	eros3_sub_energy <- coord_array_to_g_energy(eros3_sub_coord, eros3_sub_atom_pairs, eros3_grouping_list, eros3_sub_1_g, 1, gradient=TRUE)
 

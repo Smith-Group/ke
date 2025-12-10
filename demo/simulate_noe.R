@@ -1,3 +1,5 @@
+library(ke)
+
 # names of PDB files in ensemble
 pdb_names <- "ensemble.pdb"
 

@@ -1,5 +1,4 @@
-source("~/Documents/Wesleyan/R/ke/R/ke.R")
-source("~/Documents/Wesleyan/R/ke/R/ke_prep.R")
+library(ke)
 
 pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only = TRUE)
 

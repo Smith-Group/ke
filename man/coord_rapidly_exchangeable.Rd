@@ -8,6 +8,8 @@ coord_rapidly_exchangeable(coord, amber = FALSE)
 }
 \arguments{
 \item{coord}{matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records}
+
+\item{amber}{logical indicating whether atom names are from AMBER force field}
 }
 \description{
 Determine whether an atom is rapidly exchangeable at neutral pH

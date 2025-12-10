@@ -7,9 +7,9 @@
 bond_separation(coord_mat, depth = 4)
 }
 \arguments{
-\item{depth}{maximum bond distance to calculate}
+\item{coord_mat}{3xN matrix with a column for every atom}
 
-\item{coord}{3xN matrix with a column for every atom}
+\item{depth}{maximum bond distance to calculate}
 }
 \value{
 NxN matrix with bond distances between atoms (or NA if not calculated)

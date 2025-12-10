@@ -6,9 +6,9 @@
 \alias{pdb_to_amber}
 \title{Convert between proton atom/residue name pairs}
 \format{
-An object of class \code{character} of length 160.
+An object of class \code{character} of length 161.
 
-An object of class \code{character} of length 160.
+An object of class \code{character} of length 161.
 }
 \usage{
 amber_to_pdb

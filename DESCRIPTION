@@ -1,6 +1,6 @@
 Package: ke
 Title: Kinetic Ensemble for NMR Structures
-Version: 0.0.1
+Version: 0.5
 Authors@R: 
     person("Colin", "Smith", , "colin.smith@wesleyan.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4651-167X"))

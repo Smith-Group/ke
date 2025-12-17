@@ -135,26 +135,26 @@ pdb_traj_apply <- function(traj_data, FUN, nframes = 1000, nsegments = 10, skip 
 	return_list
 }
 
-#' Calculate a dipole-dipole interaction tensor autocorrelation function
+#' Calculate second-rank dipolar autocorrelation function
 #'
 #' @param coord_buffer 3D array (frames, xyz, atoms) with nframes*(2+length(segment_nums)) frames
 #' @param nframes number of trajectory frames per segment
 #' @param segment_nums segment numbers for the middle of the buffer
 #' @param atom_pair_mat_list list of matrices (pairs, 2) 
-#' @param acf_dir directory where <segment_num>.rds files written with calculated ACF
+#' @param dacf_dir directory where <segment_num>.rds files written with calculated DACF
 #'
 #' @return list with NULL values of length segment_nums
 #'
 #' @export
-pdb_traj_acf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, acf_dir) {
+pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, dacf_dir=NULL) {
 
 	segment_size <- nframes
 
-	dir.create(acf_dir, showWarnings = FALSE, recursive = TRUE)
+	dir.create(dacf_dir, showWarnings = FALSE, recursive = TRUE)
 	
 	print(segment_nums)
 	
-	acf_files <- file.path(acf_dir, paste0(segment_nums, ".rds"))
+	acf_files <- file.path(dacf_dir, paste0(segment_nums, ".rds"))
 
 	if (all(file.exists(acf_files))) {
 		return(NULL)
@@ -178,7 +178,7 @@ pdb_traj_acf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list
 			atom2 <- atom_pair_mat_list[[i]][j,2]
 			# some wastage here recalculating d_array for the entire buffer
 			r_array_buffer <- (coord_buffer[,,atom2]-coord_buffer[,,atom1])*1e-10
-			d_array <- r_array_to_d_array(r_array_buffer)
+			d_array <- ke::r_array_to_d_array(r_array_buffer)
 	
 			for (k in seq_along(acf_lags)) {
 				idx1 <- acf_idx+acf_start_offsets[k]
@@ -190,7 +190,6 @@ pdb_traj_acf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list
 		}
 
 		acf_mat/nrow(atom_pair_mat_list[[i]])
-	
 	}
 	
 	if (requireNamespace("future.apply", quietly = TRUE)) {
@@ -200,6 +199,7 @@ pdb_traj_acf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list
 	}
 
 	acf_array <- simplify2array(acf_list)
+	dimnames(acf_array)[[3]] <- names(atom_pair_mat_list)
 
 	for (i in seq_len(dim(acf_array)[2])) {
 		saveRDS(acf_array[,i,], acf_files[i])

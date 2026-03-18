@@ -605,6 +605,8 @@ coord_array_to_r_array_backprop <- function(d_energy_d_coord_array, atom_pairs, 
 #' Note that the coefficients of the last four elements are different than what was given in \href{https://doi.org/10.1007/s10858-019-00288-8}{Smith 2020}. Those published coefficients do not account for the 3/2 factor in the cartesian tensor.
 #'
 #' @param r_array 3D array (pairs, models, xyz) with internuclear vectors
+#' @param dist logical indicating whether to return distance-dependent form
+#' @param unit logical indicating whether to return unit (distance-independent) form
 #' @param gradient a logical value indicating whether to calculate the derivative
 #'
 #' @return 3D array (pairs, models, tensor elements) with interaction tensors
@@ -612,7 +614,9 @@ coord_array_to_r_array_backprop <- function(d_energy_d_coord_array, atom_pairs, 
 #' The optional derivative is contained in the `"gradient"` attribute. It is a 4D array (pairs, models, tensor elements, xyz).
 #'
 #' @export
-r_array_to_d_array <- function(r_array, gradient=FALSE) {
+r_array_to_d_array <- function(r_array, dist=TRUE, unit=FALSE, gradient=FALSE) {
+
+	stopifnot(dist || unit)
 
 	input_dim <- dim(r_array)
 	input_dimnames <- dimnames(r_array)
@@ -627,12 +631,12 @@ r_array_to_d_array <- function(r_array, gradient=FALSE) {
 	z <- r_array[,3]
 	sr3x <- 1.73205080756888*x #sqrt(3)
 	sr3y <- 1.73205080756888*y #sqrt(3)
-	xsq <- x^2
-	ysq <- y^2
-	zsq <- z^2
+	xsq <- x*x
+	ysq <- y*y
+	zsq <- z*z
 	xsq_ysq <- xsq+ysq
-	r <- sqrt(xsq_ysq+zsq)
-	da <- 1/r^5
+	rsq <- xsq_ysq+zsq
+	r <- sqrt(rsq)
 	db <- cbind(
 		zsq-0.5*(xsq_ysq),
 		0.866025403784439*(xsq-ysq), # sqrt(3)/2
@@ -641,21 +645,34 @@ r_array_to_d_array <- function(r_array, gradient=FALSE) {
 		sr3x*y
 	)
 	
-	value <- da*db
-	colnames(value) <- c("d1", "d2", "d3", "d4", "d5")
+	if (dist) {
+		r5 <- rsq*rsq*r
+		da_dist <- 1/r5
+		value_dist <- da_dist*db
+		colnames(value_dist) <- c("d1", "d2", "d3", "d4", "d5")
+		
+		# convert back to array if necessary
+		if (length(input_dim) == 3) {
+			dim(value_dist) <- c(input_dim[1:2], 5)
+			dimnames(value_dist) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")))
+		}
+	}
 	
-	# convert back to array if necessary
-	if (length(input_dim) == 3) {
-		dim(value) <- c(input_dim[1:2], 5)
-		dimnames(value) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")))
+	if (unit) {
+		da_unit <- 1/rsq
+		value_unit <- da_unit*db
+		colnames(value_unit) <- c("d1", "d2", "d3", "d4", "d5")
+		
+		# convert back to array if necessary
+		if (length(input_dim) == 3) {
+			dim(value_unit) <- c(input_dim[1:2], 5)
+			dimnames(value_unit) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")))
+		}
 	}
 	
 	if (gradient) {
 	
 		# it is numerically more efficient to calculate the derivative with the product rule
-		r7inv <- 1/r^7
-		#ddadxyz <- c(-5*x/r7, -5*y/r7, -5*z/r7)
-		ddadxyz <- -5*r_array*r7inv
 		sr3z <- 1.73205080756888*z
 		zero <- numeric(nrow(r_array))
 		ddbdxyz <- array(c(
@@ -666,18 +683,49 @@ r_array_to_d_array <- function(r_array, gradient=FALSE) {
 		
 		# calculate derivative using product rule: db*ddadxyz + da*ddbdxyz
 		# da could be premultiplied during construction of ddbdxyz
-		grad <- as.vector(db)*as.vector(ddadxyz[,c(1L,1L,1L,1L,1L,2L,2L,2L,2L,2L,3L,3L,3L,3L,3L)]) + da*ddbdxyz
 		
-		# convert to array if necessary
-		if (length(input_dim) == 3) {
-			dim(grad) <- c(input_dim[1:2], 5, input_dim[3])
-			dimnames(grad) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")), input_dimnames[3])
+		if (dist) {
+			r7inv <- 1/(r5*rsq)
+			#ddadxyz <- c(-5*x/r7, -5*y/r7, -5*z/r7)
+			ddadxyz_dist <- -5*r_array*r7inv
+		
+			grad_dist <- as.vector(db)*as.vector(ddadxyz_dist[,c(1L,1L,1L,1L,1L,2L,2L,2L,2L,2L,3L,3L,3L,3L,3L)]) + da_dist*ddbdxyz
+		
+			# convert to array if necessary
+			if (length(input_dim) == 3) {
+				dim(grad_dist) <- c(input_dim[1:2], 5, input_dim[3])
+				dimnames(grad_dist) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")), input_dimnames[3])
+			}
+			
+			attr(value_dist, "gradient") <- grad_dist
 		}
 		
-		attr(value, "gradient") <- grad
+		if (unit) {
+			r4inv <- 1/(rsq*rsq)
+			#ddadxyz <- c(-5*x/r7, -5*y/r7, -5*z/r7)
+			ddadxyz_unit <- -2*r_array*r4inv
+		
+			grad_unit <- as.vector(db)*as.vector(ddadxyz_unit[,c(1L,1L,1L,1L,1L,2L,2L,2L,2L,2L,3L,3L,3L,3L,3L)]) + da_unit*ddbdxyz
+		
+			# convert to array if necessary
+			if (length(input_dim) == 3) {
+				dim(grad_unit) <- c(input_dim[1:2], 5, input_dim[3])
+				dimnames(grad_unit) <- c(input_dimnames[1:2], list(c("d1", "d2", "d3", "d4", "d5")), input_dimnames[3])
+			}
+			
+			attr(value_unit, "gradient") <- grad_unit
+		}
 	}
 	
-	value
+	if (dist) {
+		if (unit) {
+			list(dist=value_dist, unit=value_unit)
+		} else {
+			value_dist
+		}
+	} else {
+		value_unit
+	}
 }
 
 #' Back-propagate energy derivative from d array to r array

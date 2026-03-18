@@ -4,10 +4,14 @@
 \alias{r_array_to_d_array}
 \title{Calculate dipole-dipole interaction tensors from internuclear vectors}
 \usage{
-r_array_to_d_array(r_array, gradient = FALSE)
+r_array_to_d_array(r_array, dist = TRUE, unit = FALSE, gradient = FALSE)
 }
 \arguments{
 \item{r_array}{3D array (pairs, models, xyz) with internuclear vectors}
+
+\item{dist}{logical indicating whether to return distance-dependent form}
+
+\item{unit}{logical indicating whether to return unit (distance-independent) form}
 
 \item{gradient}{a logical value indicating whether to calculate the derivative}
 }

@@ -135,18 +135,19 @@ pdb_traj_apply <- function(traj_data, FUN, nframes = 1000, nsegments = 10, skip 
 	return_list
 }
 
-#' Calculate second-rank dipolar autocorrelation function
+#' Calculate second-rank dipolar autocorrelation functions
 #'
 #' @param coord_buffer 3D array (frames, xyz, atoms) with nframes*(2+length(segment_nums)) frames
 #' @param nframes number of trajectory frames per segment
 #' @param segment_nums segment numbers for the middle of the buffer
 #' @param atom_pair_mat_list list of matrices (pairs, 2) 
+#' @param radial_only logical indicating only radial fluctuation should be accounted for
 #' @param dacf_dir directory where <segment_num>.rds files written with calculated DACF
 #'
 #' @return list with NULL values of length segment_nums
 #'
 #' @export
-pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, dacf_dir=NULL) {
+pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, radial_only=FALSE, dacf_dir=NULL) {
 
 	segment_size <- nframes
 
@@ -164,10 +165,6 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 	acf_start_offsets <- ceiling(-acf_lags/2)
 	acf_idx <- segment_size+seq_len(segment_size*length(segment_nums))
 
-	# randomize the order in which atom_pair_mat_list is processed to balance worker loads
-	future_order <- sample(seq_along(atom_pair_mat_list))
-	future_order_rev <- order(future_order)
-	
 	FUN <- function(i) {
 
 		acf_mat <- matrix(0, nrow=segment_size, ncol=length(segment_nums))
@@ -178,6 +175,11 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 			atom2 <- atom_pair_mat_list[[i]][j,2]
 			# some wastage here recalculating d_array for the entire buffer
 			r_array_buffer <- (coord_buffer[,,atom2]-coord_buffer[,,atom1])*1e-10
+			if (radial_only) {
+				# take out reorientation of the vector
+				r_array_buffer[,1] <- sqrt(rowSums(r_array_buffer*r_array_buffer))
+				r_array_buffer[,2:3] <- 0
+			}
 			d_array <- ke::r_array_to_d_array(r_array_buffer)
 	
 			for (k in seq_along(acf_lags)) {
@@ -193,6 +195,9 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 	}
 	
 	if (requireNamespace("future.apply", quietly = TRUE)) {
+		# randomize the order in which atom_pair_mat_list is processed to balance worker loads
+		future_order <- sample(seq_along(atom_pair_mat_list))
+		future_order_rev <- order(future_order)
 		acf_list <- future.apply::future_lapply(seq_along(atom_pair_mat_list)[future_order], FUN)[future_order_rev]
 	} else {
 		acf_list <- lapply(seq_along(atom_pair_mat_list)[future_order], FUN)[future_order_rev]
@@ -207,3 +212,121 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 	
 	rep(list(NULL), length(segment_nums))
 }
+
+#' Calculate kernel weights for determining NOE sigma and rho from a dipolar autocorrelation function
+#'
+#' @param dacf example dipolar autocorrelation function vector or the length of the vector
+#' @param dt time interval between dacf elements in seconds
+#' @param tauc isotropic tumbling time of the molecule in seconds
+#' @param proton_mhz proton Larmor frequency in MHz
+#' @param terms vector of terms to use in calculating the kernel
+#'
+#' @export
+noe_dacf_kernel <- function(dacf, dt, tauc, proton_mhz, terms=c("0", "omega", "2omega"), ntrunc = 1) {
+
+	dacf_length <- if (length(dacf) == 1) {
+		dacf
+	} else {
+		length(dacf)
+	}
+
+	# numerically calculate the kernel out to a 1000-fold decay
+	kernel_length <- max(dacf_length, round(log(100000)*tauc/dt))
+	
+	kernel_t <- seq(0, by=dt, length.out=kernel_length)
+	
+	kernel_overall <- exp(-kernel_t/tauc)
+	
+	kernel_freq <- rbind(
+		"0" = cos(0*kernel_t)*kernel_overall,
+		"omega" = cos(2*pi*proton_mhz*1e6*kernel_t)*kernel_overall,
+		"2omega" = cos(2*2*pi*proton_mhz*1e6*kernel_t)*kernel_overall
+	)
+	
+	# multiply all but the first point by 2 to handle forward and reverse times
+	kernel_freq[,-1] <- kernel_freq[,-1]*2
+	
+	# sum the contributions from missing dacf values into last ntrunc values
+	trunc_idx <- seq(dacf_length-ntrunc+1, dacf_length)
+	kernel_freq[,trunc_idx] <- kernel_freq[,trunc_idx]+rowSums(kernel_freq[,-seq_len(dacf_length)])/ntrunc
+
+	# truncate the kernel to the length of the dacf
+	kernel_freq <- kernel_freq[,seq_len(dacf_length)] 
+
+	# K = \frac{\mu_0}{4\pi} \hbar \gamma_p^2
+	K_sq = (1e-7*(6.62607015e-34/(2*pi))*2.6752218708e8^2)^2
+	
+	rbind(
+		sigma=0.1*K_sq*colSums((kernel_freq*c(-0.5, 0, 3))[terms,,drop=FALSE]),
+		rho=0.1*K_sq*colSums((kernel_freq*c(0.5, 1.5, 3))[terms,,drop=FALSE])
+	)
+}
+
+#' Calculate second-rank dipole interaction tensors
+#'
+#' @param coord_buffer 3D array (frames, xyz, atoms) with nframes*(2+length(segment_nums)) frames
+#' @param nframes number of trajectory frames per segment
+#' @param segment_nums segment numbers for the middle of the buffer
+#' @param atom_pair_mat_list list of matrices (pairs, 2)
+#' @param unit logical indicating whether to convert to unit vectors 
+#' @param d_dir directory where <segment_num>.rds files written with calculated tensors
+#'
+#' @return list with NULL values of length segment_nums
+#'
+#' @export
+pdb_traj_d <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, unit=FALSE, d_dir=NULL) {
+
+	dir.create(d_dir, showWarnings = FALSE, recursive = TRUE)
+	
+	print(segment_nums)
+	
+	d_files <- file.path(d_dir, paste0(segment_nums, ".rds"))
+
+	if (all(file.exists(d_files))) {
+		return(NULL)
+	}
+	
+	active_idx <- nframes+seq_len(nframes*length(segment_nums))
+	
+	FUN <- function(i) {
+	
+		d_array <- 0
+	
+		for (j in seq_len(nrow(atom_pair_mat_list[[i]]))) {
+	
+			atom1 <- atom_pair_mat_list[[i]][j,1]
+			atom2 <- atom_pair_mat_list[[i]][j,2]
+			r_array <- (coord_buffer[active_idx,,atom2]-coord_buffer[active_idx,,atom1])*1e-10
+			if (unit) {
+				# change contents of r_array into unit vectors
+				r_array <- r_array/sqrt(rowSums(r_array*r_array))
+			}
+			d_array <- d_array+ke::r_array_to_d_array(r_array)
+		}
+		
+		d_array <- d_array/nrow(atom_pair_mat_list[[i]])
+		
+		dim(d_array) <- c(nframes, length(segment_nums), 5)
+		
+		colMeans(d_array)
+	}
+
+	if (requireNamespace("future.apply", quietly = TRUE)) {
+		# randomize the order in which atom_pair_mat_list is processed to balance worker loads
+		future_order <- sample(seq_along(atom_pair_mat_list))
+		future_order_rev <- order(future_order)
+		d_list <- future.apply::future_lapply(seq_along(atom_pair_mat_list)[future_order], FUN)[future_order_rev]
+	} else {
+		d_list <- lapply(seq_along(atom_pair_mat_list), FUN)
+	}
+
+	d_array <- simplify2array(d_list)
+	dimnames(d_array)[[3]] <- names(atom_pair_mat_list)
+
+	for (i in seq_len(dim(d_array)[1])) {
+		saveRDS(d_array[i,,], d_files[i])
+	}
+	
+	rep(list(NULL), length(segment_nums))
+}
+

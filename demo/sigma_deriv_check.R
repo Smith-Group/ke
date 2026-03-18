@@ -51,7 +51,9 @@ for (i in seq_len(nrow(equiv_multi_pairs))) {
 }
 
 # select pairs of equivalent atom groups whose minimum distances are less than 5 angstroms
-sigma_pairs <- matrix(rownames(equiv_min_dist_mat)[which(equiv_min_dist_mat < 5 & upper.tri(equiv_min_dist_mat), arr.ind=TRUE)], ncol=2)
+idx <- which(equiv_min_dist_mat < 5 & upper.tri(equiv_min_dist_mat), arr.ind=TRUE)
+idx <- idx[order(idx[,1], idx[,2]),]
+sigma_pairs <- matrix(rownames(equiv_min_dist_mat)[idx], ncol=2)
 
 # create data structures for calculating spectral density functions
 spec_den_data_list <- make_spec_den_data(ke_data, sigma_pairs, perm_internal=TRUE)

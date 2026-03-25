@@ -938,6 +938,259 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 	d_sigma_d_a_matrix*d_energy_d_sigma
 }
 
+#' Calculate overall tumbling modes from diffusion tensor principal values
+#'
+#' This helper constructs the overall tumbling factor for use in
+#'    `a_matrix_to_relax()` from the rank-2 rotational diffusion generator in
+#'    the tesseral basis
+#'    \eqn{(Y_{2,0}, Y_{2,2}^{c}, Y_{2,1}^{c}, Y_{2,1}^{s}, Y_{2,2}^{s})}.
+#'
+#' Let \eqn{(D_x, D_y, D_z)} denote the principal values of the rotational
+#' diffusion tensor in the diffusion-frame principal-axis system. In this
+#' basis, the rank-2 diffusion generator is
+#' \deqn{
+#' \mathbf{L}^{(2)} =
+#' \begin{pmatrix}
+#' 3(D_x + D_y) & \sqrt{3}(D_x - D_y) & 0 & 0 & 0 \\
+#' \sqrt{3}(D_x - D_y) & D_x + D_y + 4D_z & 0 & 0 & 0 \\
+#' 0 & 0 & D_x + 4D_y + D_z & 0 & 0 \\
+#' 0 & 0 & 0 & 4D_x + D_y + D_z & 0 \\
+#' 0 & 0 & 0 & 0 & D_x + D_y + 4D_z
+#' \end{pmatrix}.
+#' }
+#' The returned `lambda_overall_vec` contains the negative decay rates
+#' associated with the distinct eigenvalues of that matrix, so that they can be
+#' combined with the negative internal-motion eigenvalues used elsewhere in the
+#' package.
+#' The current implementation assumes that `dxyz_vec` is already ordered in the
+#' same diffusion-frame convention as the generator above. In particular, the
+#' axial-symmetry shortcut is only triggered for \eqn{D_x = D_y}, so the unique
+#' diffusion axis should correspond to the `z` axis of the supplied diffusion
+#' frame.
+#'
+#' For the autocorrelation case currently implemented here,
+#'    `dunit_b_matrix` must equal `dunit_a_matrix`. Each row of
+#'    `dunit_a_matrix` is interpreted as the average rank-2 unit dipole-dipole
+#'    tensor in the diffusion frame. Its squared norm
+#' \deqn{S^2 = \lVert \mathbf d^{\mathrm u} \rVert^2}
+#' is used as a measure of residual second-rank orientational order.
+#' `S^2 = 1` corresponds to no orientational averaging, while `S^2 = 0`
+#' corresponds to complete isotropic averaging of the rank-2 interaction.
+#'
+#' When `S^2 > s2_min`, the row is normalized to a unit rank-2 direction and
+#' projected onto the overall tumbling eigenmodes. For fully anisotropic
+#' diffusion, if \eqn{\hat{\mathbf d}} is the normalized row and
+#' \eqn{\mathbf v_i} are the orthonormal eigenvectors of
+#' \eqn{\mathbf{L}^{(2)}}, the directional overall-mode weights are
+#' \deqn{a_{pi}^{\mathrm{dir}} = (\hat{\mathbf d}_p \cdot \mathbf v_i)^2.}
+#' Because the eigenvectors are orthonormal, these directional weights sum to
+#' one for each row:
+#' \deqn{\sum_i a_{pi}^{\mathrm{dir}} = 1.}
+#'
+#' For axially symmetric diffusion with \eqn{D_x = D_y}, the generator is
+#' already diagonal in three grouped mode classes, and the directional weights
+#' reduce to
+#' \deqn{a_{p1}^{\mathrm{dir}} = \hat d_{p1}^2,}
+#' \deqn{a_{p2}^{\mathrm{dir}} = \hat d_{p2}^2 + \hat d_{p5}^2,}
+#' \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2 + \hat d_{p4}^2.}
+#'
+#' For fully anisotropic diffusion, the coupled
+#' \eqn{(Y_{2,0}, Y_{2,2}^{c})} block is diagonalized analytically. Writing
+#' \deqn{
+#' A = 3(D_x + D_y), \qquad
+#' B = \sqrt{3}(D_x - D_y), \qquad
+#' C = D_x + D_y + 4D_z,
+#' }
+#' and
+#' \deqn{
+#' \theta = \frac{1}{2}\operatorname{atan2}(2B, A - C),
+#' }
+#' the first two directional weights are
+#' \deqn{
+#' a_{p1}^{\mathrm{dir}} =
+#' (\cos\theta\,\hat d_{p1} + \sin\theta\,\hat d_{p2})^2,
+#' }
+#' \deqn{
+#' a_{p2}^{\mathrm{dir}} =
+#' (-\sin\theta\,\hat d_{p1} + \cos\theta\,\hat d_{p2})^2,
+#' }
+#' with
+#' \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2, \quad
+#' a_{p4}^{\mathrm{dir}} = \hat d_{p4}^2, \quad
+#' a_{p5}^{\mathrm{dir}} = \hat d_{p5}^2.}
+#'
+#' The current implementation regularizes the poorly defined limit
+#'    \eqn{S^2 \to 0} by blending the directional weights with symmetry-based
+#'    limiting weights using `S^2` itself as the blend coefficient. For each
+#'    row,
+#' \deqn{
+#' \mathbf a_p^{\mathrm{overall}} =
+#' S_p^2 \, \mathbf a_p^{\mathrm{dir}} +
+#' (1 - S_p^2)\, \mathbf a^{\mathrm{lim}}.
+#' }
+#' The limiting weights are chosen to respect the symmetry of the corresponding
+#' diffusion model:
+#' \itemize{
+#'   \item Isotropic diffusion: one mode with weight \eqn{(1)}.
+#'   \item Axially symmetric diffusion: three grouped weights
+#'      \eqn{(1/5, 2/5, 2/5)}.
+#'   \item Fully anisotropic diffusion: five equal weights
+#'      \eqn{(1/5, 1/5, 1/5, 1/5, 1/5)}.
+#' }
+#' These fallback values were chosen so that when the residual rank-2
+#' direction becomes negligible, no artificial orientation is introduced by the
+#' regularization. In the isotropic case there is only one overall mode, so its
+#' weight must be one. In the fully anisotropic case, loss of directional
+#' information implies that no one eigenmode should be preferred over any
+#' other, so the five weights are taken to be equal. In the axially symmetric
+#' case, the corresponding grouped weights are obtained by summing the equal
+#' fully anisotropic weights over the degenerate mode pairs, giving
+#' \eqn{(1/5, 2/5, 2/5)}. This makes the fallback consistent with the symmetry
+#' of the diffusion operator and with the normalization
+#' \eqn{\sum_i a_{pi}^{\mathrm{overall}} = 1} used for the autocorrelation
+#' implementation here.
+#' Thus the returned rows sum to one in the autocorrelation case, and
+#' `s2_min` controls the point below which directional information is deemed too
+#' weak to normalize reliably.
+#'
+#' @param dxyz_vec numeric vector with diffusion tensor principal values
+#'    `c(Dx, Dy, Dz)`
+#' @param dunit_a_matrix matrix `(pairs, 5)` of unit dipole-dipole tensor
+#'    averages for vector A in the diffusion frame
+#' @param dunit_b_matrix optional matrix `(pairs, 5)` of unit dipole-dipole
+#'    tensor averages for vector B in the diffusion frame. If `NULL`, the
+#'    autocorrelation case is assumed and `dunit_a_matrix` is used for both
+#'    inputs.
+#' @param s2_min numeric threshold below which anisotropic directional weights
+#'    are replaced by their limiting fallback values. Defaults to `1e-4` as a
+#'    conservative choice that is also intended to be suitable for later
+#'    single-precision implementations.
+#' @param tol numeric tolerance used to collapse degenerate overall tumbling
+#'    modes
+#'
+#' @return List with elements `a_overall_matrix` and `lambda_overall_vec`.
+#'    Equal overall decay rates are collapsed so the number of columns is the
+#'    minimum needed to represent isotropic, axially symmetric, or fully
+#'    anisotropic diffusion. The current implementation regularizes the
+#'    autocorrelation case only.
+#'
+#' @export
+dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix = NULL, s2_min = 1e-4, tol = sqrt(.Machine$double.eps)) {
+	is_auto <- is.null(dunit_b_matrix)
+	if (is_auto) {
+		dunit_b_matrix <- dunit_a_matrix
+	}
+
+	stopifnot(
+		is.numeric(dxyz_vec),
+		length(dxyz_vec) == 3,
+		is.matrix(dunit_a_matrix),
+		is.matrix(dunit_b_matrix),
+		ncol(dunit_a_matrix) == 5,
+		ncol(dunit_b_matrix) == 5,
+		nrow(dunit_a_matrix) == nrow(dunit_b_matrix),
+		is.numeric(s2_min),
+		length(s2_min) == 1,
+		s2_min >= 0,
+		is.numeric(tol),
+		length(tol) == 1,
+		tol >= 0
+	)
+
+	dx <- dxyz_vec[1]
+	dy <- dxyz_vec[2]
+	dz <- dxyz_vec[3]
+	sr3 <- 1.73205080756888
+
+	if (!is_auto) {
+		stop("Cross-correlation overall-mode regularization is not implemented yet")
+	}
+
+	# Clip S^2 to [0, 1] to guard against tiny numerical excursions outside the
+	# physically meaningful range for averaged rank-2 unit tensors.
+	s2_vec <- pmin(1, pmax(0, rowSums(dunit_a_matrix^2)))
+	dunit_norm_vec <- sqrt(s2_vec)
+	dunit_unit_matrix <- dunit_a_matrix
+	valid_idx <- s2_vec > s2_min
+	if (any(valid_idx)) {
+		dunit_unit_matrix[valid_idx, ] <- dunit_unit_matrix[valid_idx, , drop = FALSE] / dunit_norm_vec[valid_idx]
+	}
+
+	# Isotropic
+	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy)) &&
+		abs(dx - dz) <= tol * max(1, abs(dx), abs(dz))) {
+		a_overall_matrix <- matrix(
+			1,
+			nrow = nrow(dunit_a_matrix),
+			ncol = 1,
+			dimnames = list(NULL, "overall1")
+		)
+		lambda_overall_vec <- c(overall1 = -6 * dx)
+		return(list(
+			a_overall_matrix = a_overall_matrix,
+			lambda_overall_vec = lambda_overall_vec
+		))
+	}
+
+	# Axially symmetric
+	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy))) {
+		a_overall_matrix_dir <- cbind(
+			dunit_unit_matrix[, 1]^2,
+			dunit_unit_matrix[, 2]^2 + dunit_unit_matrix[, 5]^2,
+			dunit_unit_matrix[, 3]^2 + dunit_unit_matrix[, 4]^2
+		)
+		a_overall_matrix <- s2_vec * a_overall_matrix_dir +
+			(1 - s2_vec) * matrix(rep(c(1 / 5, 2 / 5, 2 / 5), each = nrow(dunit_a_matrix)), nrow = nrow(dunit_a_matrix))
+		colnames(a_overall_matrix) <- paste0("overall", 1:3)
+		lambda_overall_vec <- c(
+			overall1 = -3 * (dx + dy),
+			overall2 = -(2 * dx + 4 * dz),
+			overall3 = -(5 * dx + dz)
+		)
+		return(list(
+			a_overall_matrix = a_overall_matrix,
+			lambda_overall_vec = lambda_overall_vec
+		))
+	}
+
+	# Fully anisotropic
+	block_a <- 3 * (dx + dy)
+	block_b <- sr3 * (dx - dy)
+	block_c <- dx + dy + 4 * dz
+	block_trace_half <- 0.5 * (block_a + block_c)
+	block_diff_half <- 0.5 * (block_a - block_c)
+	block_radius <- sqrt(block_diff_half^2 + block_b^2)
+
+	lambda_overall_vec <- -c(
+		block_trace_half + block_radius,
+		block_trace_half - block_radius,
+		dx + 4 * dy + dz,
+		4 * dx + dy + dz,
+		dx + dy + 4 * dz
+	)
+
+	theta <- 0.5 * atan2(2 * block_b, block_a - block_c)
+	cos_theta <- cos(theta)
+	sin_theta <- sin(theta)
+
+	a_overall_matrix_dir <- cbind(
+		(cos_theta * dunit_unit_matrix[, 1] + sin_theta * dunit_unit_matrix[, 2])^2,
+		(-sin_theta * dunit_unit_matrix[, 1] + cos_theta * dunit_unit_matrix[, 2])^2,
+		dunit_unit_matrix[, 3]^2,
+		dunit_unit_matrix[, 4]^2,
+		dunit_unit_matrix[, 5]^2
+	)
+	a_overall_matrix <- s2_vec * a_overall_matrix_dir +
+		(1 - s2_vec) * matrix(1 / 5, nrow = nrow(dunit_a_matrix), ncol = length(lambda_overall_vec))
+	colnames(a_overall_matrix) <- paste0("overall", 1:5)
+	names(lambda_overall_vec) <- colnames(a_overall_matrix)
+
+	list(
+		a_overall_matrix = a_overall_matrix,
+		lambda_overall_vec = lambda_overall_vec
+	)
+}
+
 #' Calculate relaxation rates from spectral density functions with internal and overall motion
 #'
 #' Calculate per-pair relaxation rates by combining internal and overall motion

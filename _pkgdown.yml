@@ -1,0 +1,8 @@
+destination: ../smith-group.github.io/ke
+url: https://smith-group.github.io/ke/
+template:
+  bootstrap: 5
+  math-rendering: mathjax
+authors:
+  Colin Smith:
+    href: http://smithlab.wesleyan.edu

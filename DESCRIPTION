@@ -7,6 +7,8 @@ Authors@R:
 Author: Colin Smith [aut, cre]
 Maintainer: Colin Smith <colin.smith@wesleyan.edu>
 Description: What the package does (one paragraph).
+URL: https://github.com/smith-group/ke,
+    https://smith-group.github.io/ke/
 License: BSD_2_clause + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

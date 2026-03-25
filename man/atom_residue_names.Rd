@@ -4,8 +4,14 @@
 \name{amber_to_pdb}
 \alias{amber_to_pdb}
 \alias{pdb_to_amber}
+\alias{charmm_to_pdb}
+\alias{pdb_to_charmm}
 \title{Convert between proton atom/residue name pairs}
 \format{
+An object of class \code{character} of length 161.
+
+An object of class \code{character} of length 161.
+
 An object of class \code{character} of length 161.
 
 An object of class \code{character} of length 161.
@@ -14,6 +20,10 @@ An object of class \code{character} of length 161.
 amber_to_pdb
 
 pdb_to_amber
+
+charmm_to_pdb
+
+pdb_to_charmm
 }
 \description{
 Convert between proton atom/residue name pairs

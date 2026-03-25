@@ -837,6 +837,8 @@ equiv_list_name <- function(equiv_list, restype = TRUE, sep = ":", multiatom_for
 #' @param karo phenylalanine/tyrosine flip eigenvalue
 #' @param proton_mhz proton frequency in MHz
 #' @param mix_times mixing times to calculate
+#'
+#' @export
 make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1/1e-12, karo = 1/100e-6, proton_mhz, mix_times) {
 
 	perm_methyl <- find_methyl_permutations(dimnames(coord_array)[[2]])
@@ -868,6 +870,8 @@ make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1
 #' @param perm_internal logical indicating whether to include atom pair internal to
 #'    permutation groups
 #' @param sigma optional numeric vector of cross relaxation rates
+#'
+#' @export
 make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, sigma = NULL) {
 
 	# create rate matrices

@@ -938,6 +938,104 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 	d_sigma_d_a_matrix*d_energy_d_sigma
 }
 
+#' Calculate relaxation rates from spectral density functions with internal and overall motion
+#'
+#' Calculate per-pair relaxation rates by combining internal and overall motion
+#' into a spectral density function and summing the resulting spectral density
+#' terms with user-supplied coefficients.
+#'
+#' For pair \eqn{p}, this function evaluates
+#' \deqn{R_p = \sum_t c_{pt} J_p(\omega_{pt})}
+#' where \eqn{t} indexes the supplied spectral density terms, with coefficients
+#' \eqn{c_{pt}} and frequencies \eqn{\omega_{pt}} from `spec_den_term_array`.
+#' The spectral density is calculated as
+#' \deqn{J_p(\omega) = -2 \sum_i \sum_j
+#' a^{\mathrm{int}}_{pj} a^{\mathrm{overall}}_{pi}
+#' \frac{\lambda^{\prime}_{ij}}{(\lambda^{\prime}_{ij})^2 + \omega^2}}
+#' with combined decay rates
+#' \deqn{\lambda^{\prime}_{ij} = \lambda^{\mathrm{int}}_j - \lambda^{\mathrm{overall}}_i.}
+#' In the spectral density summation, the factor of 2 comes from integrating
+#' an equilibrium time-correlation function over both positive and negative
+#' time lags, and the minus sign reflects the use of negative decay
+#' eigenvalues.
+#'
+#' @param a_int_matrix (pairs, eigenvalues) matrix of internal motion amplitudes
+#' @param lambda_int_vec internal motion eigenvalues associated with a_int_matrix columns
+#' @param a_overall_matrix (pairs, eigenvalues) matrix of overall rotational diffusion amplitudes
+#' @param lambda_overall_vec overall rotational diffusion eigenvalues associated with a_overall_matrix columns
+#' @param spec_den_term_array array `(pairs, terms, components)` with
+#'    spectral-density coefficients in component 1 and frequencies in
+#'    component 2
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return Numeric vector of relaxation rates, one value per atom pair.
+#'
+#' @seealso [a_matrix_to_relax_backprop()]
+#'
+#' @export
+a_matrix_to_relax <- function(a_int_matrix, lambda_int_vec, a_overall_matrix, lambda_overall_vec, spec_den_term_array, gradient = FALSE) {
+	stopifnot(
+		is.matrix(a_int_matrix),
+		is.matrix(a_overall_matrix),
+		is.array(spec_den_term_array),
+		length(dim(spec_den_term_array)) == 3,
+		ncol(a_int_matrix) == length(lambda_int_vec),
+		ncol(a_overall_matrix) == length(lambda_overall_vec),
+		nrow(a_int_matrix) == nrow(a_overall_matrix),
+		dim(spec_den_term_array)[1] == nrow(a_int_matrix),
+		dim(spec_den_term_array)[3] == 2
+	)
+
+	spec_den_coef_matrix <- spec_den_term_array[, , 1, drop = FALSE][, , 1]
+	spec_den_freq_matrix <- spec_den_term_array[, , 2, drop = FALSE][, , 1]
+	value <- numeric(nrow(a_int_matrix))
+	if (gradient) {
+		d_value_d_a_int_matrix <- matrix(0, nrow = nrow(a_int_matrix), ncol = ncol(a_int_matrix))
+	}
+
+	for (i in seq_along(lambda_overall_vec)) {
+		lambda_prime_vec <- lambda_int_vec - lambda_overall_vec[i]
+		for (j in seq_along(lambda_prime_vec)) {
+			term_vec <- rowSums(
+				spec_den_coef_matrix * (
+					-2 * a_overall_matrix[, i] * lambda_prime_vec[j] /
+						(lambda_prime_vec[j]^2 + spec_den_freq_matrix^2)
+				)
+			)
+			value <- value + a_int_matrix[, j] * term_vec
+			if (gradient) {
+				d_value_d_a_int_matrix[, j] <- d_value_d_a_int_matrix[, j] + term_vec
+			}
+		}
+	}
+
+	if (gradient) {
+		attr(value, "gradient") <- d_value_d_a_int_matrix
+	}
+
+	value
+}
+
+#' Back-propagate energy derivative from relaxation rates to a matrix
+#'
+#' For pair \eqn{p} and internal correlation function component \eqn{j}, 
+#' the chain rule gives
+#' \deqn{\frac{\partial E}{\partial a_{pj}} =
+#' \frac{\partial E}{\partial R_p}
+#' \frac{\partial R_p}{\partial a_{pj}}.}
+#'
+#' @param d_relax_d_a_matrix matrix (pairs, internal eigenvalues) from `gradient` attribute of
+#'    `a_matrix_to_relax()`
+#' @param d_energy_d_relax vector (pairs)
+#'
+#' @return Matrix `(pairs, internal eigenvalues)` with `d_energy_d_a_matrix`.
+#'
+#' @seealso [a_matrix_to_relax()]
+a_matrix_to_relax_backprop <- function(d_relax_d_a_matrix, d_energy_d_relax) {
+
+	d_relax_d_a_matrix * d_energy_d_relax
+}
+
 #' Calculate restraint energy from group norm squared values
 #'
 #' @param g current group norm squared values

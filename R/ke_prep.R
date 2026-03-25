@@ -975,8 +975,49 @@ make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, s
 			mat_list[[pair_name]]
 		)
 	}
-	
-	spec_den_data_list
+		
+		spec_den_data_list
+	}
+
+#' Make spectral density term array for proton-proton cross relaxation
+#'
+#' This helper encodes the coefficients and frequencies needed for
+#'    `a_matrix_to_relax()` to calculate the homonuclear cross-relaxation
+#'    rate sigma.
+#'
+#' Following the notation of Peter (2001) \doi{10.1023/a:1011241030461}, 
+#' the sigma cross-relaxation rate is defined
+#' \deqn{\sigma = \frac{1}{10} K^2 \left( 3 J(2 \omega_H) - \frac{1}{2} J(0) \right)}
+#' \deqn{K = \frac{\mu_0}{4 \pi} \hbar \gamma_H^2}
+#'
+#' The returned array stores the two spectral density terms:
+#' \deqn{J(0) \text{ with coefficient } -\frac{1}{20} K^2}
+#' \deqn{J(2 \omega_H) \text{ with coefficient } \frac{3}{10} K^2.}
+#'
+#' @param n_pairs integer number of atom pairs
+#' @param proton_mhz spectrometer proton field strength in MHz
+#'
+#' @return Array with dimensions `(pairs, terms, components)`. The term
+#'    dimension is named `c("0", "2wH")` and the component dimension is
+#'    named `c("coef", "freq")`.
+#'
+#' @export
+make_sigma_spec_den_term_array <- function(n_pairs, proton_mhz) {
+	k_sq <- 5.69549944e-49
+	omega0 <- proton_mhz * 1e6 * 2 * pi
+
+	spec_den_term_array <- array(
+		0,
+		dim = c(n_pairs, 2, 2),
+		dimnames = list(NULL, c("0", "2wH"), c("coef", "freq"))
+	)
+
+	spec_den_term_array[, "0", "coef"] <- -0.5 * 0.1 * k_sq
+	spec_den_term_array[, "0", "freq"] <- 0
+	spec_den_term_array[, "2wH", "coef"] <- 3 * 0.1 * k_sq
+	spec_den_term_array[, "2wH", "freq"] <- 2 * omega0
+
+	spec_den_term_array
 }
 
 #' Tests with toy example from Smith 2020 J Biomol NMR

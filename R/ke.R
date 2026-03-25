@@ -897,7 +897,7 @@ g_matrix_to_a_matrix_backprop <- function(a_coef, d_energy_d_a_matrix) {
 
 	for (i in seq_len(nrow(a_coef))) {
 		for (j in which(a_coef[i,] != 0)) {
-			d_energy_d_g_matrix[,i] <- d_energy_d_g_matrix[,i] + d_energy_d_a_matrix[,j]/a_coef[i,j]
+			d_energy_d_g_matrix[,i] <- d_energy_d_g_matrix[,i] + d_energy_d_a_matrix[,j]*a_coef[i,j]
 		}
 	}
 	
@@ -1638,10 +1638,6 @@ coord_array_to_sigma <- function(coord_array, rates, spec_den_data_list, proton_
 #'
 #' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array 
 #' (atoms, xyz, models).
-#'
-#' Testing with `deriv_check` showed a slight systematic (~0.2% underestimation) of the 
-#' gradient between two methyl groups. Perhaps there's some unaccounted correlation in 
-#' the purely additive derivative calculation?
 #'
 #' @export
 coord_array_to_sigma_energy <- function(coord_array, rates, spec_den_data_list, proton_mhz, loss_func = power_scaled_loss, ..., gradient=FALSE) {

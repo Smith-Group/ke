@@ -34,10 +34,6 @@ total restraint energy calculated using \code{loss_func}
 
 The optional derivative is contained in the \code{"gradient"} attribute. It is a 3D array
 (atoms, xyz, models).
-
-Testing with \code{deriv_check} showed a slight systematic (~0.2\% underestimation) of the
-gradient between two methyl groups. Perhaps there's some unaccounted correlation in
-the purely additive derivative calculation?
 }
 \description{
 Calculate sigma restraint energy from atomic coordinates

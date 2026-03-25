@@ -4,8 +4,6 @@ Version: 0.5
 Authors@R: 
     person("Colin", "Smith", , "colin.smith@wesleyan.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4651-167X"))
-Author: Colin Smith [aut, cre]
-Maintainer: Colin Smith <colin.smith@wesleyan.edu>
 Description: What the package does (one paragraph).
 URL: https://github.com/smith-group/ke,
     https://smith-group.github.io/ke/

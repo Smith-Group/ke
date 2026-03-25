@@ -615,7 +615,7 @@ coord_array_to_r_array_backprop <- function(d_energy_d_coord_array, atom_pairs, 
 #'
 #' \eqn{d = 1/r^5 [ z^2 - 1/2 (x^2+y^2), \sqrt{3}/2 (x^2-y^2), \sqrt{3} xz, \sqrt{3} yz, \sqrt{3} xy) ]}
 #'
-#' Note that the coefficients of the last four elements are different than what was given in \href{https://doi.org/10.1007/s10858-019-00288-8}{Smith 2020}. Those published coefficients do not account for the 3/2 factor in the cartesian tensor.
+#' Note that the coefficients of the last four elements are different than what was given in Smith 2020 (\doi{10.1007/s10858-019-00288-8}). Those published coefficients do not account for the 3/2 factor in the cartesian tensor.
 #'
 #' @param r_array 3D array (pairs, models, xyz) with internuclear vectors
 #' @param dist logical indicating whether to return distance-dependent form
@@ -1355,7 +1355,9 @@ power_scale <- function(x, p) {
 #' plot(x, attr(loss_x_grad, "gradient"), type="l", ylab="dloss/dx")
 #' points(x[-1]-mean(diff(x))/2, diff(loss_x)/mean(diff(x)), type="l", col="blue")
 #' abline(h = 0, col="gray")
-#' legend("bottomright", legend=c("Analytical", "Finite Difference"), bty="n", lwd=1, col=c("black", "blue"))
+#' legend("bottomright",
+#'   legend=c("Analytical", "Finite Difference"),
+#'   bty="n", lwd=1, col=c("black", "blue"))
 #'
 #' @export
 power_scaled_loss <- function(x, x0, p=1, k=1, gradient=FALSE) {

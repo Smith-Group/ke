@@ -7,7 +7,7 @@
 dxyz_dunit_to_overall_modes(
   dxyz_vec,
   dunit_a_matrix,
-  dunit_b_matrix = dunit_a_matrix,
+  dunit_b_matrix = NULL,
   s2_min = 1e-04,
   tol = sqrt(.Machine$double.eps)
 )
@@ -19,8 +19,10 @@ dxyz_dunit_to_overall_modes(
 \item{dunit_a_matrix}{matrix \verb{(pairs, 5)} of unit dipole-dipole tensor
 averages for vector A in the diffusion frame}
 
-\item{dunit_b_matrix}{matrix \verb{(pairs, 5)} of unit dipole-dipole tensor
-averages for vector B in the diffusion frame}
+\item{dunit_b_matrix}{optional matrix \verb{(pairs, 5)} of unit dipole-dipole
+tensor averages for vector B in the diffusion frame. If \code{NULL}, the
+autocorrelation case is assumed and \code{dunit_a_matrix} is used for both
+inputs.}
 
 \item{s2_min}{numeric threshold below which anisotropic directional weights
 are replaced by their limiting fallback values. Defaults to \code{1e-4} as a

@@ -32,6 +32,8 @@ plot(x, loss_x, type="l", ylab="loss")
 plot(x, attr(loss_x_grad, "gradient"), type="l", ylab="dloss/dx")
 points(x[-1]-mean(diff(x))/2, diff(loss_x)/mean(diff(x)), type="l", col="blue")
 abline(h = 0, col="gray")
-legend("bottomright", legend=c("Analytical", "Finite Difference"), bty="n", lwd=1, col=c("black", "blue"))
+legend("bottomright",
+  legend=c("Analytical", "Finite Difference"),
+  bty="n", lwd=1, col=c("black", "blue"))
 
 }

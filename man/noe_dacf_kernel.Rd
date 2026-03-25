@@ -23,6 +23,8 @@ noe_dacf_kernel(
 \item{proton_mhz}{proton Larmor frequency in MHz}
 
 \item{terms}{vector of terms to use in calculating the kernel}
+
+\item{ntrunc}{number of trailing kernel elements over which to spread the truncated tail contribution}
 }
 \description{
 Calculate kernel weights for determining NOE sigma and rho from a dipolar autocorrelation function

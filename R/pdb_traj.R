@@ -220,6 +220,7 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 #' @param tauc isotropic tumbling time of the molecule in seconds
 #' @param proton_mhz proton Larmor frequency in MHz
 #' @param terms vector of terms to use in calculating the kernel
+#' @param ntrunc number of trailing kernel elements over which to spread the truncated tail contribution
 #'
 #' @export
 noe_dacf_kernel <- function(dacf, dt, tauc, proton_mhz, terms=c("0", "omega", "2omega"), ntrunc = 1) {

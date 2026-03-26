@@ -981,31 +981,45 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 #' diffusion axis should correspond to the `z` axis of the supplied diffusion
 #' frame.
 #'
-#' For the autocorrelation case currently implemented here,
-#'    `dunit_b_matrix` must equal `dunit_a_matrix`. Each row of
-#'    `dunit_a_matrix` is interpreted as the average rank-2 unit dipole-dipole
-#'    tensor in the diffusion frame. Its squared norm
+#' For a matrix input `(pairs, 5)`, each row is interpreted either as a single
+#' unit rank-2 tensor or as an averaged rank-2 unit tensor in the diffusion
+#' frame. Its squared norm
 #' \deqn{S^2 = \lVert \mathbf d^{\mathrm u} \rVert^2}
 #' is used as a measure of residual second-rank orientational order.
 #' `S^2 = 1` corresponds to no orientational averaging, while `S^2 = 0`
 #' corresponds to complete isotropic averaging of the rank-2 interaction.
+#' Matrix cross-correlation is supported only when every row of both inputs has
+#' \eqn{S^2 = 1} within `tol`, so that the rows can be interpreted as explicit
+#' unit-tensor states rather than averaged tensors.
 #'
 #' When `S^2 > s2_min`, the row is normalized to a unit rank-2 direction and
-#' projected onto the overall tumbling eigenmodes. For fully anisotropic
-#' diffusion, if \eqn{\hat{\mathbf d}} is the normalized row and
-#' \eqn{\mathbf v_i} are the orthonormal eigenvectors of
-#' \eqn{\mathbf{L}^{(2)}}, the directional overall-mode weights are
+#' projected onto the overall tumbling eigenmodes. For autocorrelation, if
+#' \eqn{\hat{\mathbf d}} is the normalized row and \eqn{\mathbf v_i} are the
+#' orthonormal eigenvectors of \eqn{\mathbf{L}^{(2)}}, the directional
+#' overall-mode weights are
 #' \deqn{a_{pi}^{\mathrm{dir}} = (\hat{\mathbf d}_p \cdot \mathbf v_i)^2.}
 #' Because the eigenvectors are orthonormal, these directional weights sum to
 #' one for each row:
 #' \deqn{\sum_i a_{pi}^{\mathrm{dir}} = 1.}
+#' For matrix cross-correlation with explicit unit-tensor rows
+#' \eqn{\hat{\mathbf d}^A_p} and \eqn{\hat{\mathbf d}^B_p}, the corresponding
+#' directional amplitudes are
+#' \deqn{
+#' a_{pi}^{\mathrm{dir}} =
+#' (\hat{\mathbf d}^A_p \cdot \mathbf v_i)
+#' (\hat{\mathbf d}^B_p \cdot \mathbf v_i).
+#' }
 #'
 #' For axially symmetric diffusion with \eqn{D_x = D_y}, the generator is
-#' already diagonal in three grouped mode classes, and the directional weights
-#' reduce to
+#' already diagonal in three grouped mode classes. In the autocorrelation case,
+#' the directional weights reduce to
 #' \deqn{a_{p1}^{\mathrm{dir}} = \hat d_{p1}^2,}
 #' \deqn{a_{p2}^{\mathrm{dir}} = \hat d_{p2}^2 + \hat d_{p5}^2,}
-#' \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2 + \hat d_{p4}^2.}
+#' \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2 + \hat d_{p4}^2,}
+#' while for cross-correlation they become
+#' \deqn{a_{p1}^{\mathrm{dir}} = \hat d^A_{p1}\hat d^B_{p1},}
+#' \deqn{a_{p2}^{\mathrm{dir}} = \hat d^A_{p2}\hat d^B_{p2} + \hat d^A_{p5}\hat d^B_{p5},}
+#' \deqn{a_{p3}^{\mathrm{dir}} = \hat d^A_{p3}\hat d^B_{p3} + \hat d^A_{p4}\hat d^B_{p4}.}
 #'
 #' For fully anisotropic diffusion, the coupled
 #' \eqn{(Y_{2,0}, Y_{2,2}^{c})} block is diagonalized analytically. Writing
@@ -1031,6 +1045,8 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 #' \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2, \quad
 #' a_{p4}^{\mathrm{dir}} = \hat d_{p4}^2, \quad
 #' a_{p5}^{\mathrm{dir}} = \hat d_{p5}^2.}
+#' In the matrix cross-correlation case, the corresponding formulas replace
+#' these squares by products of the projected \eqn{A} and \eqn{B} rows.
 #'
 #' The current implementation regularizes the poorly defined limit
 #'    \eqn{S^2 \to 0} by blending the directional weights with symmetry-based
@@ -1066,14 +1082,35 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 #' `s2_min` controls the point below which directional information is deemed too
 #' weak to normalize reliably.
 #'
+#' For a 3D array input `(pairs, models, 5)`, the overall-mode amplitudes are
+#' averaged directly over the ensemble of unit tensors. This path supports both
+#' auto- and cross-correlation. For each pair \eqn{p}, model \eqn{m}, and
+#' overall mode \eqn{i}, let \eqn{\mathbf d^A_{pm}} and
+#' \eqn{\mathbf d^B_{pm}} denote the unit rank-2 tensors for the two
+#' interactions in that model. The returned amplitudes are then
+#' \deqn{
+#' a_{pi}^{\mathrm{overall}} =
+#' \frac{1}{M}\sum_{m=1}^M
+#' (\mathbf d^A_{pm} \cdot \mathbf v_i)
+#' (\mathbf d^B_{pm} \cdot \mathbf v_i),
+#' }
+#' where \eqn{\mathbf v_i} are the rank-2 diffusion eigenvectors and
+#' \eqn{M} is the number of ensemble members. For autocorrelation,
+#' \eqn{\mathbf d^A = \mathbf d^B}, so this reduces to the average of squared
+#' projections. For cross-correlation, corresponding rows and models of
+#' `dunit_a_array` and `dunit_b_array` are paired directly before averaging.
+#' This avoids the normalization ambiguity that arises for near-zero averaged
+#' rank-2 tensors.
+#'
 #' @param dxyz_vec numeric vector with diffusion tensor principal values
 #'    `c(Dx, Dy, Dz)`
-#' @param dunit_a_matrix matrix `(pairs, 5)` of unit dipole-dipole tensor
-#'    averages for vector A in the diffusion frame
-#' @param dunit_b_matrix optional matrix `(pairs, 5)` of unit dipole-dipole
-#'    tensor averages for vector B in the diffusion frame. If `NULL`, the
-#'    autocorrelation case is assumed and `dunit_a_matrix` is used for both
-#'    inputs.
+#' @param dunit_a_array array of unit dipole-dipole tensors for vector A in the
+#'    diffusion frame. A matrix `(pairs, 5)` uses the averaged-`dunit`
+#'    regularized model, while a 3D array `(pairs, models, 5)` averages
+#'    overall-mode weights directly over the ensemble of unit vectors.
+#' @param dunit_b_array optional array of unit dipole-dipole tensors for vector
+#'    B in the diffusion frame. If `NULL`, the autocorrelation case is assumed
+#'    and `dunit_a_array` is used for both inputs.
 #' @param s2_min numeric threshold below which anisotropic directional weights
 #'    are replaced by their limiting fallback values. Defaults to `1e-4` as a
 #'    conservative choice that is also intended to be suitable for later
@@ -1084,24 +1121,21 @@ a_matrix_to_sigma_backprop <- function(d_sigma_d_a_matrix, d_energy_d_sigma) {
 #' @return List with elements `a_overall_matrix` and `lambda_overall_vec`.
 #'    Equal overall decay rates are collapsed so the number of columns is the
 #'    minimum needed to represent isotropic, axially symmetric, or fully
-#'    anisotropic diffusion. The current implementation regularizes the
-#'    autocorrelation case only.
+#'    anisotropic diffusion. Matrix input supports autocorrelation and also
+#'    supports cross-correlation when all rows of both inputs satisfy
+#'    \eqn{S^2 \approx 1}; 3D array input supports both auto- and
+#'    cross-correlation by direct ensemble averaging.
 #'
 #' @export
-dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix = NULL, s2_min = 1e-4, tol = sqrt(.Machine$double.eps)) {
-	is_auto <- is.null(dunit_b_matrix)
+dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_array, dunit_b_array = NULL, s2_min = 1e-4, tol = sqrt(.Machine$double.eps)) {
+	is_auto <- is.null(dunit_b_array)
 	if (is_auto) {
-		dunit_b_matrix <- dunit_a_matrix
+		dunit_b_array <- dunit_a_array
 	}
 
 	stopifnot(
 		is.numeric(dxyz_vec),
 		length(dxyz_vec) == 3,
-		is.matrix(dunit_a_matrix),
-		is.matrix(dunit_b_matrix),
-		ncol(dunit_a_matrix) == 5,
-		ncol(dunit_b_matrix) == 5,
-		nrow(dunit_a_matrix) == nrow(dunit_b_matrix),
 		is.numeric(s2_min),
 		length(s2_min) == 1,
 		s2_min >= 0,
@@ -1115,26 +1149,175 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix
 	dz <- dxyz_vec[3]
 	sr3 <- 1.73205080756888
 
-	if (!is_auto) {
-		stop("Cross-correlation overall-mode regularization is not implemented yet")
+	if (is.matrix(dunit_a_array)) {
+		if (!is_auto) {
+			stopifnot(
+				is.matrix(dunit_b_array),
+				identical(dim(dunit_a_array), dim(dunit_b_array))
+			)
+			s2_a_vec <- rowSums(dunit_a_array^2)
+			s2_b_vec <- rowSums(dunit_b_array^2)
+			s2_scale <- pmax(1, abs(s2_a_vec), abs(s2_b_vec))
+			if (any(abs(s2_a_vec - 1) > tol * s2_scale) ||
+				any(abs(s2_b_vec - 1) > tol * s2_scale)) {
+				stop("Matrix cross-correlation is only supported when every row of both inputs has S^2 = 1 within `tol`")
+			}
+		}
+		return(.dxyz_dunit_matrix_to_overall_modes(dxyz_vec, dunit_a_array, dunit_b_array, s2_min = s2_min, tol = tol, regularize = is_auto))
 	}
+	if (is.array(dunit_a_array) && length(dim(dunit_a_array)) == 3 &&
+		is.array(dunit_b_array) && length(dim(dunit_b_array)) == 3) {
+		return(.dxyz_dunit_array_to_overall_modes(dxyz_vec, dunit_a_array, dunit_b_array, tol = tol))
+	}
+
+	stop("`dunit_a_array` must be either a matrix `(pairs, 5)` or a 3D array `(pairs, models, 5)`")
+}
+
+.dxyz_dunit_matrix_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix = dunit_a_matrix, s2_min = 1e-4, tol = sqrt(.Machine$double.eps), regularize = TRUE) {
+	stopifnot(
+		is.matrix(dunit_a_matrix),
+		ncol(dunit_a_matrix) == 5,
+		is.matrix(dunit_b_matrix),
+		identical(dim(dunit_a_matrix), dim(dunit_b_matrix))
+	)
+
+	dx <- dxyz_vec[1]
+	dy <- dxyz_vec[2]
+	dz <- dxyz_vec[3]
+	sr3 <- 1.73205080756888
 
 	# Clip S^2 to [0, 1] to guard against tiny numerical excursions outside the
 	# physically meaningful range for averaged rank-2 unit tensors.
-	s2_vec <- pmin(1, pmax(0, rowSums(dunit_a_matrix^2)))
-	dunit_norm_vec <- sqrt(s2_vec)
-	dunit_unit_matrix <- dunit_a_matrix
-	valid_idx <- s2_vec > s2_min
-	if (any(valid_idx)) {
-		dunit_unit_matrix[valid_idx, ] <- dunit_unit_matrix[valid_idx, , drop = FALSE] / dunit_norm_vec[valid_idx]
+	s2_a_vec <- pmin(1, pmax(0, rowSums(dunit_a_matrix^2)))
+	s2_b_vec <- pmin(1, pmax(0, rowSums(dunit_b_matrix^2)))
+	s2_vec <- s2_a_vec
+	dunit_a_norm_vec <- sqrt(s2_a_vec)
+	dunit_b_norm_vec <- sqrt(s2_b_vec)
+	dunit_a_unit_matrix <- dunit_a_matrix
+	valid_a_idx <- dunit_a_norm_vec > 0
+	if (any(valid_a_idx)) {
+		dunit_a_unit_matrix[valid_a_idx, ] <- dunit_a_unit_matrix[valid_a_idx, , drop = FALSE] / dunit_a_norm_vec[valid_a_idx]
 	}
+	dunit_b_unit_matrix <- dunit_b_matrix
+	valid_b_idx <- dunit_b_norm_vec > 0
+	if (any(valid_b_idx)) {
+		dunit_b_unit_matrix[valid_b_idx, ] <- dunit_b_unit_matrix[valid_b_idx, , drop = FALSE] / dunit_b_norm_vec[valid_b_idx]
+	}
+	blend_vec <- if (regularize) s2_vec else rep(1, length(s2_vec))
+
+		# Isotropic
+		if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy)) &&
+			abs(dx - dz) <= tol * max(1, abs(dx), abs(dz))) {
+			a_overall_matrix <- matrix(
+				rowSums(dunit_a_unit_matrix * dunit_b_unit_matrix),
+				nrow = nrow(dunit_a_matrix),
+				ncol = 1,
+				dimnames = list(NULL, "overall1")
+			)
+		lambda_overall_vec <- c(overall1 = -6 * dx)
+		return(list(
+			a_overall_matrix = a_overall_matrix,
+			lambda_overall_vec = lambda_overall_vec
+		))
+	}
+
+	# Axially symmetric
+		if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy))) {
+			a_overall_matrix_dir <- cbind(
+				dunit_a_unit_matrix[, 1] * dunit_b_unit_matrix[, 1],
+				dunit_a_unit_matrix[, 2] * dunit_b_unit_matrix[, 2] +
+					dunit_a_unit_matrix[, 5] * dunit_b_unit_matrix[, 5],
+				dunit_a_unit_matrix[, 3] * dunit_b_unit_matrix[, 3] +
+					dunit_a_unit_matrix[, 4] * dunit_b_unit_matrix[, 4]
+			)
+			a_overall_matrix <- blend_vec * a_overall_matrix_dir +
+				(1 - blend_vec) * matrix(rep(c(1 / 5, 2 / 5, 2 / 5), each = nrow(dunit_a_matrix)), nrow = nrow(dunit_a_matrix))
+			colnames(a_overall_matrix) <- paste0("overall", 1:3)
+			lambda_overall_vec <- c(
+				overall1 = -3 * (dx + dy),
+			overall2 = -(2 * dx + 4 * dz),
+			overall3 = -(5 * dx + dz)
+		)
+		return(list(
+			a_overall_matrix = a_overall_matrix,
+			lambda_overall_vec = lambda_overall_vec
+		))
+	}
+
+	# Fully anisotropic
+	block_a <- 3 * (dx + dy)
+	block_b <- sr3 * (dx - dy)
+	block_c <- dx + dy + 4 * dz
+	block_trace_half <- 0.5 * (block_a + block_c)
+	block_diff_half <- 0.5 * (block_a - block_c)
+	block_radius <- sqrt(block_diff_half^2 + block_b^2)
+
+	lambda_overall_vec <- -c(
+		block_trace_half + block_radius,
+		block_trace_half - block_radius,
+		dx + 4 * dy + dz,
+		4 * dx + dy + dz,
+		dx + dy + 4 * dz
+	)
+
+	theta <- 0.5 * atan2(2 * block_b, block_a - block_c)
+	cos_theta <- cos(theta)
+	sin_theta <- sin(theta)
+
+	a_overall_matrix_dir <- cbind(
+		(cos_theta * dunit_a_unit_matrix[, 1] + sin_theta * dunit_a_unit_matrix[, 2]) *
+			(cos_theta * dunit_b_unit_matrix[, 1] + sin_theta * dunit_b_unit_matrix[, 2]),
+		(-sin_theta * dunit_a_unit_matrix[, 1] + cos_theta * dunit_a_unit_matrix[, 2]) *
+			(-sin_theta * dunit_b_unit_matrix[, 1] + cos_theta * dunit_b_unit_matrix[, 2]),
+		dunit_a_unit_matrix[, 3] * dunit_b_unit_matrix[, 3],
+		dunit_a_unit_matrix[, 4] * dunit_b_unit_matrix[, 4],
+		dunit_a_unit_matrix[, 5] * dunit_b_unit_matrix[, 5]
+	)
+	a_overall_matrix <- blend_vec * a_overall_matrix_dir +
+		(1 - blend_vec) * matrix(1 / 5, nrow = nrow(dunit_a_matrix), ncol = length(lambda_overall_vec))
+	colnames(a_overall_matrix) <- paste0("overall", 1:5)
+	names(lambda_overall_vec) <- colnames(a_overall_matrix)
+
+	list(
+		a_overall_matrix = a_overall_matrix,
+		lambda_overall_vec = lambda_overall_vec
+	)
+}
+
+.dxyz_dunit_array_to_overall_modes <- function(dxyz_vec, dunit_a_array, dunit_b_array, tol = sqrt(.Machine$double.eps)) {
+	stopifnot(
+		is.array(dunit_a_array),
+		length(dim(dunit_a_array)) == 3,
+		dim(dunit_a_array)[3] == 5,
+		is.array(dunit_b_array),
+		length(dim(dunit_b_array)) == 3,
+		identical(dim(dunit_a_array), dim(dunit_b_array))
+	)
+
+	n_pairs <- dim(dunit_a_array)[1]
+	n_models <- dim(dunit_a_array)[2]
+	dx <- dxyz_vec[1]
+	dy <- dxyz_vec[2]
+	dz <- dxyz_vec[3]
+	sr3 <- 1.73205080756888
+
+	a1 <- matrix(dunit_a_array[, , 1], nrow = n_pairs, ncol = n_models)
+	a2 <- matrix(dunit_a_array[, , 2], nrow = n_pairs, ncol = n_models)
+	a3 <- matrix(dunit_a_array[, , 3], nrow = n_pairs, ncol = n_models)
+	a4 <- matrix(dunit_a_array[, , 4], nrow = n_pairs, ncol = n_models)
+	a5 <- matrix(dunit_a_array[, , 5], nrow = n_pairs, ncol = n_models)
+	b1 <- matrix(dunit_b_array[, , 1], nrow = n_pairs, ncol = n_models)
+	b2 <- matrix(dunit_b_array[, , 2], nrow = n_pairs, ncol = n_models)
+	b3 <- matrix(dunit_b_array[, , 3], nrow = n_pairs, ncol = n_models)
+	b4 <- matrix(dunit_b_array[, , 4], nrow = n_pairs, ncol = n_models)
+	b5 <- matrix(dunit_b_array[, , 5], nrow = n_pairs, ncol = n_models)
 
 	# Isotropic
 	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy)) &&
 		abs(dx - dz) <= tol * max(1, abs(dx), abs(dz))) {
 		a_overall_matrix <- matrix(
-			1,
-			nrow = nrow(dunit_a_matrix),
+			rowMeans(a1 * b1 + a2 * b2 + a3 * b3 + a4 * b4 + a5 * b5),
+			nrow = n_pairs,
 			ncol = 1,
 			dimnames = list(NULL, "overall1")
 		)
@@ -1147,13 +1330,11 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix
 
 	# Axially symmetric
 	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy))) {
-		a_overall_matrix_dir <- cbind(
-			dunit_unit_matrix[, 1]^2,
-			dunit_unit_matrix[, 2]^2 + dunit_unit_matrix[, 5]^2,
-			dunit_unit_matrix[, 3]^2 + dunit_unit_matrix[, 4]^2
+		a_overall_matrix <- cbind(
+			rowMeans(a1 * b1),
+			rowMeans(a2 * b2 + a5 * b5),
+			rowMeans(a3 * b3 + a4 * b4)
 		)
-		a_overall_matrix <- s2_vec * a_overall_matrix_dir +
-			(1 - s2_vec) * matrix(rep(c(1 / 5, 2 / 5, 2 / 5), each = nrow(dunit_a_matrix)), nrow = nrow(dunit_a_matrix))
 		colnames(a_overall_matrix) <- paste0("overall", 1:3)
 		lambda_overall_vec <- c(
 			overall1 = -3 * (dx + dy),
@@ -1186,15 +1367,17 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_matrix, dunit_b_matrix
 	cos_theta <- cos(theta)
 	sin_theta <- sin(theta)
 
-	a_overall_matrix_dir <- cbind(
-		(cos_theta * dunit_unit_matrix[, 1] + sin_theta * dunit_unit_matrix[, 2])^2,
-		(-sin_theta * dunit_unit_matrix[, 1] + cos_theta * dunit_unit_matrix[, 2])^2,
-		dunit_unit_matrix[, 3]^2,
-		dunit_unit_matrix[, 4]^2,
-		dunit_unit_matrix[, 5]^2
+	mode1_a <- cos_theta * a1 + sin_theta * a2
+	mode2_a <- -sin_theta * a1 + cos_theta * a2
+	mode1_b <- cos_theta * b1 + sin_theta * b2
+	mode2_b <- -sin_theta * b1 + cos_theta * b2
+	a_overall_matrix <- cbind(
+		rowMeans(mode1_a * mode1_b),
+		rowMeans(mode2_a * mode2_b),
+		rowMeans(a3 * b3),
+		rowMeans(a4 * b4),
+		rowMeans(a5 * b5)
 	)
-	a_overall_matrix <- s2_vec * a_overall_matrix_dir +
-		(1 - s2_vec) * matrix(1 / 5, nrow = nrow(dunit_a_matrix), ncol = length(lambda_overall_vec))
 	colnames(a_overall_matrix) <- paste0("overall", 1:5)
 	names(lambda_overall_vec) <- colnames(a_overall_matrix)
 

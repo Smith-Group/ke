@@ -6,8 +6,8 @@
 \usage{
 dxyz_dunit_to_overall_modes(
   dxyz_vec,
-  dunit_a_matrix,
-  dunit_b_matrix = NULL,
+  dunit_a_array,
+  dunit_b_array = NULL,
   s2_min = 1e-04,
   tol = sqrt(.Machine$double.eps)
 )
@@ -16,13 +16,14 @@ dxyz_dunit_to_overall_modes(
 \item{dxyz_vec}{numeric vector with diffusion tensor principal values
 \code{c(Dx, Dy, Dz)}}
 
-\item{dunit_a_matrix}{matrix \verb{(pairs, 5)} of unit dipole-dipole tensor
-averages for vector A in the diffusion frame}
+\item{dunit_a_array}{array of unit dipole-dipole tensors for vector A in the
+diffusion frame. A matrix \verb{(pairs, 5)} uses the averaged-\code{dunit}
+regularized model, while a 3D array \verb{(pairs, models, 5)} averages
+overall-mode weights directly over the ensemble of unit vectors.}
 
-\item{dunit_b_matrix}{optional matrix \verb{(pairs, 5)} of unit dipole-dipole
-tensor averages for vector B in the diffusion frame. If \code{NULL}, the
-autocorrelation case is assumed and \code{dunit_a_matrix} is used for both
-inputs.}
+\item{dunit_b_array}{optional array of unit dipole-dipole tensors for vector
+B in the diffusion frame. If \code{NULL}, the autocorrelation case is assumed
+and \code{dunit_a_array} is used for both inputs.}
 
 \item{s2_min}{numeric threshold below which anisotropic directional weights
 are replaced by their limiting fallback values. Defaults to \code{1e-4} as a
@@ -36,8 +37,10 @@ modes}
 List with elements \code{a_overall_matrix} and \code{lambda_overall_vec}.
 Equal overall decay rates are collapsed so the number of columns is the
 minimum needed to represent isotropic, axially symmetric, or fully
-anisotropic diffusion. The current implementation regularizes the
-autocorrelation case only.
+anisotropic diffusion. Matrix input supports autocorrelation and also
+supports cross-correlation when all rows of both inputs satisfy
+\eqn{S^2 \approx 1}; 3D array input supports both auto- and
+cross-correlation by direct ensemble averaging.
 }
 \description{
 This helper constructs the overall tumbling factor for use in
@@ -69,31 +72,45 @@ axial-symmetry shortcut is only triggered for \eqn{D_x = D_y}, so the unique
 diffusion axis should correspond to the \code{z} axis of the supplied diffusion
 frame.
 
-For the autocorrelation case currently implemented here,
-\code{dunit_b_matrix} must equal \code{dunit_a_matrix}. Each row of
-\code{dunit_a_matrix} is interpreted as the average rank-2 unit dipole-dipole
-tensor in the diffusion frame. Its squared norm
+For a matrix input \verb{(pairs, 5)}, each row is interpreted either as a single
+unit rank-2 tensor or as an averaged rank-2 unit tensor in the diffusion
+frame. Its squared norm
 \deqn{S^2 = \lVert \mathbf d^{\mathrm u} \rVert^2}
 is used as a measure of residual second-rank orientational order.
 \code{S^2 = 1} corresponds to no orientational averaging, while \code{S^2 = 0}
 corresponds to complete isotropic averaging of the rank-2 interaction.
+Matrix cross-correlation is supported only when every row of both inputs has
+\eqn{S^2 = 1} within \code{tol}, so that the rows can be interpreted as explicit
+unit-tensor states rather than averaged tensors.
 
 When \code{S^2 > s2_min}, the row is normalized to a unit rank-2 direction and
-projected onto the overall tumbling eigenmodes. For fully anisotropic
-diffusion, if \eqn{\hat{\mathbf d}} is the normalized row and
-\eqn{\mathbf v_i} are the orthonormal eigenvectors of
-\eqn{\mathbf{L}^{(2)}}, the directional overall-mode weights are
+projected onto the overall tumbling eigenmodes. For autocorrelation, if
+\eqn{\hat{\mathbf d}} is the normalized row and \eqn{\mathbf v_i} are the
+orthonormal eigenvectors of \eqn{\mathbf{L}^{(2)}}, the directional
+overall-mode weights are
 \deqn{a_{pi}^{\mathrm{dir}} = (\hat{\mathbf d}_p \cdot \mathbf v_i)^2.}
 Because the eigenvectors are orthonormal, these directional weights sum to
 one for each row:
 \deqn{\sum_i a_{pi}^{\mathrm{dir}} = 1.}
+For matrix cross-correlation with explicit unit-tensor rows
+\eqn{\hat{\mathbf d}^A_p} and \eqn{\hat{\mathbf d}^B_p}, the corresponding
+directional amplitudes are
+\deqn{
+a_{pi}^{\mathrm{dir}} =
+(\hat{\mathbf d}^A_p \cdot \mathbf v_i)
+(\hat{\mathbf d}^B_p \cdot \mathbf v_i).
+}
 
 For axially symmetric diffusion with \eqn{D_x = D_y}, the generator is
-already diagonal in three grouped mode classes, and the directional weights
-reduce to
+already diagonal in three grouped mode classes. In the autocorrelation case,
+the directional weights reduce to
 \deqn{a_{p1}^{\mathrm{dir}} = \hat d_{p1}^2,}
 \deqn{a_{p2}^{\mathrm{dir}} = \hat d_{p2}^2 + \hat d_{p5}^2,}
-\deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2 + \hat d_{p4}^2.}
+\deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2 + \hat d_{p4}^2,}
+while for cross-correlation they become
+\deqn{a_{p1}^{\mathrm{dir}} = \hat d^A_{p1}\hat d^B_{p1},}
+\deqn{a_{p2}^{\mathrm{dir}} = \hat d^A_{p2}\hat d^B_{p2} + \hat d^A_{p5}\hat d^B_{p5},}
+\deqn{a_{p3}^{\mathrm{dir}} = \hat d^A_{p3}\hat d^B_{p3} + \hat d^A_{p4}\hat d^B_{p4}.}
 
 For fully anisotropic diffusion, the coupled
 \eqn{(Y_{2,0}, Y_{2,2}^{c})} block is diagonalized analytically. Writing
@@ -119,6 +136,8 @@ with
 \deqn{a_{p3}^{\mathrm{dir}} = \hat d_{p3}^2, \quad
 a_{p4}^{\mathrm{dir}} = \hat d_{p4}^2, \quad
 a_{p5}^{\mathrm{dir}} = \hat d_{p5}^2.}
+In the matrix cross-correlation case, the corresponding formulas replace
+these squares by products of the projected \eqn{A} and \eqn{B} rows.
 
 The current implementation regularizes the poorly defined limit
 \eqn{S^2 \to 0} by blending the directional weights with symmetry-based
@@ -153,4 +172,24 @@ implementation here.
 Thus the returned rows sum to one in the autocorrelation case, and
 \code{s2_min} controls the point below which directional information is deemed too
 weak to normalize reliably.
+
+For a 3D array input \verb{(pairs, models, 5)}, the overall-mode amplitudes are
+averaged directly over the ensemble of unit tensors. This path supports both
+auto- and cross-correlation. For each pair \eqn{p}, model \eqn{m}, and
+overall mode \eqn{i}, let \eqn{\mathbf d^A_{pm}} and
+\eqn{\mathbf d^B_{pm}} denote the unit rank-2 tensors for the two
+interactions in that model. The returned amplitudes are then
+\deqn{
+a_{pi}^{\mathrm{overall}} =
+\frac{1}{M}\sum_{m=1}^M
+(\mathbf d^A_{pm} \cdot \mathbf v_i)
+(\mathbf d^B_{pm} \cdot \mathbf v_i),
+}
+where \eqn{\mathbf v_i} are the rank-2 diffusion eigenvectors and
+\eqn{M} is the number of ensemble members. For autocorrelation,
+\eqn{\mathbf d^A = \mathbf d^B}, so this reduces to the average of squared
+projections. For cross-correlation, corresponding rows and models of
+\code{dunit_a_array} and \code{dunit_b_array} are paired directly before averaging.
+This avoids the normalization ambiguity that arises for near-zero averaged
+rank-2 tensors.
 }

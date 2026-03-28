@@ -1435,8 +1435,10 @@ a_matrix_to_relax <- function(a_int_matrix, lambda_int_vec, a_overall_matrix, la
 		dim(spec_den_term_array)[3] == 2
 	)
 
-	spec_den_coef_matrix <- spec_den_term_array[, , 1, drop = FALSE][, , 1]
-	spec_den_freq_matrix <- spec_den_term_array[, , 2, drop = FALSE][, , 1]
+	spec_den_coef_matrix <- spec_den_term_array[, , 1, drop = FALSE]
+	dim(spec_den_coef_matrix) <- dim(spec_den_term_array)[1:2]
+	spec_den_freq_matrix <- spec_den_term_array[, , 2, drop = FALSE]
+	dim(spec_den_freq_matrix) <- dim(spec_den_term_array)[1:2]
 	value <- numeric(nrow(a_int_matrix))
 	if (gradient) {
 		d_value_d_a_int_matrix <- matrix(0, nrow = nrow(a_int_matrix), ncol = ncol(a_int_matrix))

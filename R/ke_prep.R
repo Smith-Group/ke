@@ -1455,7 +1455,450 @@ make_sigma_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "1H"
 	)
 }
 
+#' Normalize permutation-rate metadata for spectral-density relaxation input
+#'
+#' This helper validates a length-two `perm_rates` specification. Missing
+#' values indicate no permutation on that side, while non-missing values give
+#' the symbolic kinetic rate constants to associate with the inferred
+#' permutation processes on the `atom1` and `atom2` sides.
+#'
+#' @param perm_rates numeric vector of length 2
+#'
+#' @return A list with elements `rate_values` and `rate_names`
+#'
+#' @noRd
+.normalize_spec_den_perm_rates <- function(perm_rates) {
+	stopifnot(
+		is.numeric(perm_rates),
+		length(perm_rates) == 2
+	)
 
+	rate_names <- names(perm_rates)
+	if (is.null(rate_names)) {
+		rate_names <- rep("", length(perm_rates))
+	}
+	rate_names[is.na(perm_rates)] <- ""
+
+	bad_named <- !is.na(perm_rates) & rate_names == ""
+	if (any(bad_named)) {
+		stop("Non-missing `perm_rates` entries must be named with symbolic rate constants")
+	}
+	if (any(!is.na(perm_rates) & perm_rates <= 0)) {
+		stop("Non-missing `perm_rates` entries must be positive rate constants")
+	}
+
+	rate_values <- perm_rates
+	names(rate_values) <- c("atom1", "atom2")
+	names(rate_names) <- c("atom1", "atom2")
+
+	list(
+		rate_values = rate_values,
+		rate_names = rate_names
+	)
+}
+
+#' Normalize unique symbolic permutation rates
+#'
+#' @param perm_info output from `.normalize_spec_den_perm_rates()`
+#'
+#' @return named numeric vector of unique symbolic permutation rates
+#'
+#' @noRd
+.unique_spec_den_perm_rates <- function(perm_info) {
+	side_rate_names <- perm_info[["rate_names"]][perm_info[["rate_names"]] != ""]
+	side_rate_values <- perm_info[["rate_values"]][perm_info[["rate_names"]] != ""]
+
+	if (!length(side_rate_names)) {
+		return(numeric())
+	}
+
+	unique_rate_values <- tapply(unname(side_rate_values), side_rate_names, unique, simplify = FALSE)
+	bad_idx <- lengths(unique_rate_values) != 1L
+	if (any(bad_idx)) {
+		stop(
+			"Permutation rate constants with the same symbolic name must have identical numeric values: ",
+			paste(names(unique_rate_values)[bad_idx], collapse = ", ")
+		)
+	}
+
+	unlist(unique_rate_values, use.names = TRUE)
+}
+
+#' Detect internal permutation blocks from atom-name patterns
+#'
+#' This helper identifies the special within-permutation blocks used for
+#' methyl and aromatic internal interactions. These blocks have size 2 or 3
+#' and, by convention, the atom identifiers on each side differ pairwise by a
+#' single character.
+#'
+#' @param block two-column character matrix or data frame containing one block
+#'   of expanded atom-pair rows
+#'
+#' @return Logical scalar indicating whether `block` matches the internal-block
+#'   heuristic
+#'
+#' @noRd
+.is_internal_spec_den_block <- function(block) {
+	block <- as.matrix(block)
+	block_size <- nrow(block)
+	if (!(block_size %in% c(2L, 3L)) || ncol(block) < 2) {
+		return(FALSE)
+	}
+
+	atom1_levels <- unique(block[, 1])
+	atom2_levels <- unique(block[, 2])
+	if (length(atom1_levels) != block_size || length(atom2_levels) != block_size) {
+		return(FALSE)
+	}
+
+	count_char_diffs <- function(x, y) {
+		sx <- strsplit(x, "", fixed = TRUE)[[1]]
+		sy <- strsplit(y, "", fixed = TRUE)[[1]]
+		if (length(sx) != length(sy)) {
+			return(Inf)
+		}
+		sum(sx != sy)
+	}
+
+	atom1_diff <- outer(atom1_levels, atom1_levels, Vectorize(count_char_diffs))
+	atom2_diff <- outer(atom2_levels, atom2_levels, Vectorize(count_char_diffs))
+
+	all(atom1_diff[upper.tri(atom1_diff)] == 1L) &&
+		all(atom2_diff[upper.tri(atom2_diff)] == 1L)
+}
+
+#' Classify one expanded atom-pair block
+#'
+#' @param block two-column character matrix or data frame containing one block
+#'   of expanded atom-pair rows
+#'
+#' @return A list with elements `type`, `multiplicity`, `order`, and
+#'   `block_index_order`, or `NULL` if the block does not match a supported
+#'   layout
+#'
+#' @noRd
+.classify_spec_den_relax_block <- function(block) {
+	block <- as.matrix(block)
+	block_size <- nrow(block)
+	atom1_levels <- unique(block[, 1])
+	atom2_levels <- unique(block[, 2])
+	multiplicity <- c(atom1 = length(atom1_levels), atom2 = length(atom2_levels))
+
+	if (block_size %in% c(2L, 3L) && .is_internal_spec_den_block(block)) {
+		return(list(
+			type = "internal",
+			multiplicity = c(atom1 = 1L, atom2 = block_size),
+			order = "atom1_fastest",
+			block_index_order = seq_len(block_size)
+		))
+	}
+
+	if (prod(multiplicity) != block_size || any(!(multiplicity %in% c(1L, 2L, 3L)))) {
+		return(NULL)
+	}
+
+	expected_atom1_fastest <- cbind(
+		atom1 = rep(atom1_levels, times = length(atom2_levels)),
+		atom2 = rep(atom2_levels, each = length(atom1_levels))
+	)
+	expected_atom2_fastest <- cbind(
+		atom1 = rep(atom1_levels, each = length(atom2_levels)),
+		atom2 = rep(atom2_levels, times = length(atom1_levels))
+	)
+
+	if (identical(unname(block), unname(expected_atom1_fastest))) {
+		return(list(
+			type = "cartesian",
+			multiplicity = multiplicity,
+			order = "atom1_fastest",
+			block_index_order = seq_len(block_size)
+		))
+	}
+	if (identical(unname(block), unname(expected_atom2_fastest))) {
+		return(list(
+			type = "cartesian",
+			multiplicity = multiplicity,
+			order = "atom2_fastest",
+			block_index_order = match(
+				paste(expected_atom1_fastest[, 1], expected_atom1_fastest[, 2], sep = "\r"),
+				paste(expected_atom2_fastest[, 1], expected_atom2_fastest[, 2], sep = "\r")
+			)
+		))
+	}
+
+	NULL
+}
+
+#' Infer and validate block structure for expanded atom-pair input
+#'
+#' Expanded atom-pair tables are assumed to be written so that rows belonging
+#' to the same relaxation-rate are separated by \eqn{N}, the number of
+#' relaxation-rates. This helper tests candidate block sizes against the full
+#' table, allowing each `4`, `6`, or `9` row Cartesian block to have its own
+#' atom1-fastest or atom2-fastest ordering while also recognizing special
+#' internal-permutation blocks of size `2` and `3`.
+#'
+#' @param atom_pairs data frame or matrix whose first two columns define the
+#'   expanded atom pairs
+#' @return A list with elements:
+#'   \describe{
+#'     \item{`n_relax_rates`}{Number of relaxation-rates represented by the
+#'       expanded atom-pair table.}
+#'     \item{`inferred_order`}{Character scalar giving the within-block
+#'       ordering after canonicalization. Supported layouts are always mapped
+#'       onto `"atom1_fastest"`.}
+#'     \item{`row_order`}{Integer permutation that maps the input rows onto the
+#'       canonical atom1-fastest expanded ordering.}
+#'     \item{`inferred_multiplicity`}{Named integer vector giving the inferred
+#'       multiplicities of the `atom1` and `atom2` sides for kinetic-model
+#'       construction.}
+#'   }
+#'
+#' @noRd
+.infer_spec_den_relax_blocks <- function(atom_pairs) {
+	atom_pair_mat <- as.matrix(atom_pairs[, 1:2, drop = FALSE])
+	max_block_size <- min(nrow(atom_pair_mat), 9L)
+
+	for (block_size in c(9L, 6L, 4L, 3L, 2L, 1L)) {
+		if (block_size > max_block_size || nrow(atom_pair_mat) %% block_size != 0) {
+			next
+		}
+
+		n_relax_rates <- nrow(atom_pair_mat) / block_size
+		row_index_mat <- matrix(seq_len(nrow(atom_pair_mat)), nrow = n_relax_rates, ncol = block_size)
+		block_info <- vector("list", n_relax_rates)
+		valid_block_size <- TRUE
+		for (i in seq_len(n_relax_rates)) {
+			block_info[[i]] <- .classify_spec_den_relax_block(
+				atom_pair_mat[row_index_mat[i, ], , drop = FALSE]
+			)
+			if (is.null(block_info[[i]])) {
+				valid_block_size <- FALSE
+				break
+			}
+		}
+		if (!valid_block_size) {
+			next
+		}
+
+		block_type <- vapply(block_info, `[[`, character(1), "type")
+		block_order <- vapply(block_info, `[[`, character(1), "order")
+		block_multiplicity <- do.call(rbind, lapply(block_info, `[[`, "multiplicity"))
+
+		if (block_size %in% c(4L, 6L, 9L)) {
+			if (any(block_type != "cartesian")) {
+				next
+			}
+			if (!all(apply(block_multiplicity, 1, paste, collapse = "-") ==
+				apply(block_multiplicity[1, , drop = FALSE], 1, paste, collapse = "-"))) {
+				next
+			}
+			inferred_multiplicity <- block_info[[1]][["multiplicity"]]
+		} else if (block_size %in% c(2L, 3L)) {
+			if (all(block_type == "internal")) {
+				inferred_multiplicity <- c(atom1 = 1L, atom2 = block_size)
+			} else {
+				cart_idx <- block_type == "cartesian"
+				cart_multiplicity <- block_multiplicity[cart_idx, , drop = FALSE]
+				if (!nrow(cart_multiplicity)) {
+					next
+				}
+				if (!all(apply(cart_multiplicity, 1, paste, collapse = "-") ==
+					apply(cart_multiplicity[1, , drop = FALSE], 1, paste, collapse = "-"))) {
+					next
+				}
+				inferred_multiplicity <- block_info[[which(cart_idx)[1]]][["multiplicity"]]
+				if (sum(inferred_multiplicity > 1L) != 1L) {
+					next
+				}
+			}
+		} else {
+			if (!all(block_type == "cartesian") || !all(block_multiplicity == 1L)) {
+				next
+			}
+			inferred_multiplicity <- c(atom1 = 1L, atom2 = 1L)
+		}
+
+		inferred_order <- "atom1_fastest"
+
+		row_order <- unlist(
+			lapply(seq_len(n_relax_rates), function(i) row_index_mat[i, block_info[[i]][["block_index_order"]]]),
+			use.names = FALSE
+		)
+
+		return(list(
+			n_relax_rates = n_relax_rates,
+			inferred_order = inferred_order,
+			row_order = row_order,
+			inferred_multiplicity = inferred_multiplicity
+		))
+	}
+
+	stop("Could not match the expanded atom-pair table to a supported block layout")
+}
+
+#' Build spectral-density relaxation data from expanded atom-pair input
+#'
+#' This function constructs the matrices that
+#' implement a user-supplied kinetic model for a given number of ensemble
+#' members. It converts expanded atom-pair input, together with the
+#' corresponding `relax_data_list`, into the heterogeneous data structure
+#' needed for spectral-density relaxation calculations.
+#'
+#' The function infers the permutation block layout, if any, from the atom-pair
+#' row ordering, validates that all blocks follow the same Cartesian-product
+#' structure, and constructs the internal-motion grouping and coefficient
+#' matrices from `base_rate_mat` and `perm_rates`. The spectral-density term
+#' arrays in `relax_data_list` are passed through unchanged.
+#'
+#' The resulting object is intended to work with any rate definition encoded in
+#' `relax_data_list`, including term arrays generated by
+#' [make_sigma_spec_den_term_array()], [make_r1_spec_den_term_array()],
+#' [make_r2_spec_den_term_array()], or other functions that produce the same
+#' `spec_den_term_array` structure.
+#'
+#' The current implementation assumes that the rows in `atom_pairs` follow the
+#' expanded ordering convention where rows belonging to the same
+#' relaxation-rate are separated by \eqn{N}, the number of relaxation-rates.
+#' Reordering rows breaks this interpretation and causes validation to fail.
+#'
+#' @param atom_relax_data heterogeneous list with at least `atom_pairs`,
+#'   `unit`, and `relax_data_list`
+#' @param base_rate_mat transition-rate matrix for ensemble-member exchange
+#' @param base_rates named numeric vector of symbolic base-process rates used to
+#'   label `lambda_int_coef`
+#' @param perm_rates length-two numeric vector describing permutation processes
+#'   on the `atom1` and `atom2` sides. `NA` indicates no permutation, while a
+#'   non-missing named value supplies the symbolic rate constant for the
+#'   inferred permutation on that side.
+#'
+#' @return A list with elements `atom_pairs`, `unit`, `relax_data_list`,
+#'   `groupings`, `a_int_coef`, `lambda_int_coef`, and `inferred_multiplicity`
+#'
+#' @export
+make_spec_den_relax_data <- function(atom_relax_data, base_rate_mat, base_rates, perm_rates = c(NA_real_, NA_real_)) {
+	stopifnot(
+		is.list(atom_relax_data),
+		"atom_pairs" %in% names(atom_relax_data),
+		"unit" %in% names(atom_relax_data),
+		"relax_data_list" %in% names(atom_relax_data),
+		is.matrix(base_rate_mat),
+		is.numeric(base_rates),
+		!is.null(names(base_rates))
+	)
+	stopifnot(is.logical(atom_relax_data[["unit"]]), length(atom_relax_data[["unit"]]) == 1)
+
+	perm_info <- .normalize_spec_den_perm_rates(perm_rates)
+	block_info <- .infer_spec_den_relax_blocks(atom_relax_data[["atom_pairs"]])
+
+	atom_pairs <- atom_relax_data[["atom_pairs"]][block_info[["row_order"]], , drop = FALSE]
+	unit <- atom_relax_data[["unit"]]
+
+	relax_data_list <- atom_relax_data[["relax_data_list"]]
+	if (length(relax_data_list) == 0) {
+		stop("`make_spec_den_relax_data()` requires `atom_relax_data[['relax_data_list']]`")
+	}
+	stopifnot(is.list(relax_data_list))
+	for (rate_name in names(relax_data_list)) {
+		rate_obj <- relax_data_list[[rate_name]]
+		stopifnot(
+			is.list(rate_obj),
+			"value" %in% names(rate_obj),
+			"spec_den_term_array" %in% names(rate_obj)
+		)
+		if (length(rate_obj[["value"]]) != block_info[["n_relax_rates"]]) {
+			stop(
+				"`relax_data_list[['", rate_name, "']][['value']]` must have length ",
+				block_info[["n_relax_rates"]],
+				", matching the number of relaxation-rates"
+			)
+		}
+		if (dim(rate_obj[["spec_den_term_array"]])[1] != block_info[["n_relax_rates"]]) {
+			stop(
+				"`relax_data_list[['", rate_name, "']][['spec_den_term_array']]` must have ",
+				block_info[["n_relax_rates"]],
+				" rows in its first dimension, matching the number of relaxation-rates"
+			)
+		}
+	}
+
+	expected_has_perm <- block_info[["inferred_multiplicity"]] > 1L
+	declared_has_perm <- !is.na(perm_info[["rate_values"]])
+	if (!identical(unname(expected_has_perm), unname(declared_has_perm))) {
+		stop(
+			"Inferred permutation structure (",
+			paste(block_info[["inferred_multiplicity"]], collapse = "-"),
+			") does not match which sides have non-missing `perm_rates`"
+		)
+	}
+	if (any(block_info[["inferred_multiplicity"]][declared_has_perm] == 1L)) {
+		stop("Permutation rate constants may only be supplied for sides whose inferred multiplicity is greater than 1")
+	}
+	perm_rate_values_named <- .unique_spec_den_perm_rates(perm_info)
+
+	make_perm_matrix <- function(side_label) {
+		mult <- block_info[["inferred_multiplicity"]][[side_label]]
+		rate_value <- perm_info[["rate_values"]][[side_label]]
+		if (is.na(rate_value)) {
+			return(NULL)
+		}
+		rate_mat_simple(rate_value, paste0(side_label, seq_len(mult)))
+	}
+
+	left_perm_mat <- make_perm_matrix("atom1")
+	right_perm_mat <- make_perm_matrix("atom2")
+
+	rate_data <- get_rate_data(base_rate_mat, validate = TRUE)
+	if (!is.null(right_perm_mat)) {
+		rate_data <- get_rate_data(right_perm_mat, rate_data, validate = TRUE)
+	}
+	if (!is.null(left_perm_mat)) {
+		rate_data <- get_rate_data(left_perm_mat, rate_data, validate = TRUE)
+	}
+
+	all_permutations <- list()
+	if (!is.na(perm_info[["rate_values"]][["atom1"]])) {
+		all_permutations <- c(
+			all_permutations,
+			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["atom1"]]))
+		)
+	}
+	if (!is.na(perm_info[["rate_values"]][["atom2"]])) {
+		all_permutations <- c(
+			all_permutations,
+			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["atom2"]]))
+		)
+	}
+	if (length(all_permutations)) {
+		all_perm_names <- c(
+			if (!is.na(perm_info[["rate_values"]][["atom1"]])) as.character(perm_info[["rate_values"]][["atom1"]]),
+			if (!is.na(perm_info[["rate_values"]][["atom2"]])) as.character(perm_info[["rate_values"]][["atom2"]])
+		)
+		names(all_permutations) <- all_perm_names
+	} else {
+		all_permutations <- list()
+	}
+
+	rate_count_mat <- get_rate_count_mat(base_rate_mat, all_permutations)
+	if (ncol(rate_count_mat) == 0) {
+		mat_list <- list(
+			groupings = matrix(1L, nrow = 1, ncol = 1),
+			a_coef = matrix(1, nrow = 1, ncol = 1, dimnames = list(NULL, "0")),
+			lambda_coef = matrix(numeric(), nrow = 0, ncol = 1, dimnames = list(NULL, "0"))
+		)
+	} else {
+		mat_list <- rate_data_to_mat_list(rate_data, rate_count_mat, c(base_rates, perm_rate_values_named))
+	}
+
+	list(
+		atom_pairs = atom_pairs,
+		unit = unit,
+		relax_data_list = relax_data_list,
+		groupings = mat_list[["groupings"]],
+		a_int_coef = mat_list[["a_coef"]],
+		lambda_int_coef = mat_list[["lambda_coef"]],
+		inferred_multiplicity = block_info[["inferred_multiplicity"]]
+	)
 }
 
 #' Tests with toy example from Smith 2020 J Biomol NMR

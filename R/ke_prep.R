@@ -980,48 +980,482 @@ make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, s
 		)
 	}
 		
-		spec_den_data_list
+	spec_den_data_list
+}
+
+#' Simplify symbolic spectral-density term names
+#'
+#' This helper collapses identical sum and difference labels such as
+#' `wHpwH -> 2wH` and `wHmwH -> 0`.
+#'
+#' @param term_names Character vector of spectral-density term names
+#'
+#' @return Character vector of simplified term names
+#'
+#' @noRd
+.simplify_term_names <- function(term_names) {
+	term_names <- sub("^w([A-Za-z0-9]+)pw\\1$", "2w\\1", term_names)
+	term_names <- sub("^w([A-Za-z0-9]+)mw\\1$", "0", term_names)
+	term_names
+}
+
+#' Build a spectral-density term array from term metadata
+#'
+#' Repeated terms with the same `term_name` are merged by summing their
+#' coefficients while requiring a common frequency. In other words, if several
+#' contributions share the same spectral density label \eqn{t}, this helper
+#' constructs
+#' \deqn{c_t = \sum_k c_{tk}}
+#' while keeping a single associated \eqn{\omega_t}. Terms with merged
+#' coefficient \eqn{c_t = 0} are dropped from the returned array.
+#'
+#' @param n_pairs Integer number of rows
+#' @param term_names Character vector of term names
+#' @param coef Numeric vector of term coefficients
+#' @param freq Numeric vector of term frequencies
+#'
+#' @return Numeric array `(pairs, terms, 2)`
+#'
+#' @noRd
+.spec_den_terms_to_array <- function(n_pairs, term_names, coef, freq) {
+	stopifnot(
+		is.numeric(n_pairs),
+		length(n_pairs) == 1,
+		n_pairs >= 0,
+		n_pairs == as.integer(n_pairs),
+		is.character(term_names),
+		is.numeric(coef),
+		is.numeric(freq),
+		length(term_names) == length(coef),
+		length(term_names) == length(freq)
+	)
+
+	term_names <- .simplify_term_names(term_names)
+	term_coef <- vapply(unique(term_names), function(term_name) {
+		sum(coef[term_names == term_name])
+	}, numeric(1))
+	term_levels <- names(term_coef)[term_coef != 0]
+	spec_den_term_array <- array(
+		0,
+		dim = c(n_pairs, length(term_levels), 2),
+		dimnames = list(NULL, term_levels, c("coef", "freq"))
+	)
+
+	for (term_name in term_levels) {
+		idx <- term_names == term_name
+		term_freq <- unique(freq[idx])
+		if (length(term_freq) != 1) {
+			stop("Term `", term_name, "` was assigned multiple frequencies")
+		}
+		spec_den_term_array[, term_name, "coef"] <- term_coef[[term_name]]
+		spec_den_term_array[, term_name, "freq"] <- term_freq
 	}
 
-#' Make spectral density term array for proton-proton cross relaxation
+	spec_den_term_array
+}
+
+#' Make spectral density term array for heteronuclear R1 relaxation
 #'
-#' This helper encodes the coefficients and frequencies needed for
-#'    `a_matrix_to_relax()` to calculate the homonuclear cross-relaxation
-#'    rate sigma.
+#' This function encodes the coefficients and frequencies needed for
+#' `a_matrix_to_relax()` to calculate the heteronuclear longitudinal
+#' relaxation rate \eqn{R_1} of the observed spin \eqn{I}, including both
+#' dipole-dipole (DD) and chemical shift anisotropy (CSA) contributions.
 #'
-#' Following the notation of Peter (2001) \doi{10.1023/a:1011241030461}, 
-#' the sigma cross-relaxation rate is defined
-#' \deqn{\sigma = \frac{1}{10} K^2 \left( 3 J(2 \omega_H) - \frac{1}{2} J(0) \right)}
-#' \deqn{K = \frac{\mu_0}{4 \pi} \hbar \gamma_H^2}
+#' The implemented expression is
+#' \deqn{
+#' R_1(I) =
+#' \frac{1}{10} d_{IS}^2
+#' \left[
+#' J(\omega_I - \omega_S) + 3J(\omega_I) + 6J(\omega_I + \omega_S)
+#' \right]
+#' +
+#' c_I^2 J(\omega_I),
+#' }
+#' where
+#' \deqn{
+#' d_{IS}^2 =
+#' \left(
+#' \frac{\mu_0}{4 \pi} \hbar \gamma_I \gamma_S r_{IS}^{-3}
+#' \right)^2
+#' }
+#' and
+#' \deqn{
+#' c_I^2 =
+#' \frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+#' }
+#' Here \eqn{\Delta\sigma_I} is the CSA anisotropy of the observed spin in
+#' fractional units, obtained from `delta_sigma_ppm`.
 #'
-#' The returned array stores the two spectral density terms:
-#' \deqn{J(0) \text{ with coefficient } -\frac{1}{20} K^2}
-#' \deqn{J(2 \omega_H) \text{ with coefficient } \frac{3}{10} K^2.}
+#' The dipolar part is obtained from Solomon's longitudinal relaxation
+#' coefficient \eqn{p} for two unlike spins,
+#' \deqn{p = w_0 + 2w_1 + w_2,}
+#' given in Solomon (1955, Eq. 15), together with the unlike-spin transition
+#' probabilities \eqn{w_0}, \eqn{w_1}, and \eqn{w_2} for a pure dipole-dipole
+#' interaction in Solomon (1955, Eq. 35). Writing those transition probabilities
+#' in spectral-density form gives the standard dipolar contribution
+#' \deqn{
+#' R_1^{DD}(I) = \frac{1}{10} d_{IS}^2
+#' \left[
+#' J(\omega_I - \omega_S) + 3J(\omega_I) + 6J(\omega_I + \omega_S)
+#' \right].
+#' }
+#' In Abragam's notation, the same dipolar longitudinal relaxation expression
+#' appears in Chapter VIII, Eq. (88) of \emph{The Principles of Nuclear
+#' Magnetism} (Abragam, 1961), one notation layer upstream in terms of the
+#' rank-specific spectral densities \eqn{J^{(0)}} \eqn{J^{(1)}}, and
+#' \eqn{J^{(2)}}.
+#'
+#' The CSA term corresponds to Abragam's treatment of shielding-anisotropy
+#' relaxation in the same chapter, where for an
+#' axially symmetric CSA tensor (\eqn{\eta = 0}) his Eq. (141) can be written
+#' in the present notation as
+#' \deqn{R_1^{CSA} = c_I^2 J(\omega_I)}
+#' with the identification
+#' \deqn{c_I^2 = \omega_I^2 \Delta\sigma_I^2 / 3.}
+#' The present function then adds this CSA contribution to the dipolar result.
+#'
+#' This function uses a single spectral density function for both DD and CSA
+#' terms. That is an effective approximation appropriate when the CSA and
+#' dipolar interaction tensors are assumed to experience the same underlying
+#' motional spectral density.
+#'
+#' The underlying transition-probability treatment follows Solomon (1955)
+#' \doi{10.1103/PhysRev.99.559}, which in turn builds on the rapid-motion
+#' treatment of Abragam and Pound (1953) \doi{10.1103/PhysRev.92.943} and the
+#' dipolar correlation-function formalism of Bloembergen, Purcell, and Pound
+#' (1948) \doi{10.1103/PhysRev.73.679}.
 #'
 #' @param n_pairs integer number of atom pairs
 #' @param proton_mhz spectrometer proton field strength in MHz
+#' @param nucleus_i character scalar giving the observed nucleus, such as
+#'   `"15N"`
+#' @param nucleus_s character scalar giving the coupled partner nucleus, such
+#'   as `"1H"`
+#' @param r_is_angstrom numeric scalar internuclear distance \eqn{r_{IS}} in
+#'   Angstrom
+#' @param delta_sigma_ppm numeric scalar CSA anisotropy of the observed spin in
+#'   ppm
 #'
 #' @return Array with dimensions `(pairs, terms, components)`. The term
-#'    dimension is named `c("0", "2wH")` and the component dimension is
-#'    named `c("coef", "freq")`.
+#'   dimension is named with simplified frequency labels such as
+#'   `c("wHmwN", "wN", "wHpwN")`, and the component dimension is named
+#'   `c("coef", "freq")`.
 #'
 #' @export
-make_sigma_spec_den_term_array <- function(n_pairs, proton_mhz) {
-	k_sq <- 5.69549944e-49
-	omega0 <- proton_mhz * 1e6 * 2 * pi
-
-	spec_den_term_array <- array(
-		0,
-		dim = c(n_pairs, 2, 2),
-		dimnames = list(NULL, c("0", "2wH"), c("coef", "freq"))
+make_r1_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "15N", nucleus_s = "1H", r_is_angstrom, delta_sigma_ppm) {
+	stopifnot(
+		is.numeric(n_pairs),
+		length(n_pairs) == 1,
+		n_pairs >= 0,
+		n_pairs == as.integer(n_pairs),
+		is.numeric(proton_mhz),
+		length(proton_mhz) == 1,
+		is.character(nucleus_i),
+		length(nucleus_i) == 1,
+		is.character(nucleus_s),
+		length(nucleus_s) == 1,
+		is.numeric(r_is_angstrom),
+		length(r_is_angstrom) == 1,
+		r_is_angstrom > 0,
+		is.numeric(delta_sigma_ppm),
+		length(delta_sigma_ppm) == 1
 	)
+	if (nucleus_i == nucleus_s) {
+		stop("`make_r1_spec_den_term_array()` currently implements the heteronuclear case only")
+	}
 
-	spec_den_term_array[, "0", "coef"] <- -0.5 * 0.1 * k_sq
-	spec_den_term_array[, "0", "freq"] <- 0
-	spec_den_term_array[, "2wH", "coef"] <- 3 * 0.1 * k_sq
-	spec_den_term_array[, "2wH", "freq"] <- 2 * omega0
+	d_sq <- .dipolar_prefactor_sq(nucleus_i, nucleus_s) / (r_is_angstrom * 1e-10)^6
+	c_sq <- .csa_prefactor_sq(proton_mhz, nucleus_i, delta_sigma_ppm)
+	omega_i <- .larmor_omega(proton_mhz, nucleus_i)
+	omega_s <- .larmor_omega(proton_mhz, nucleus_s)
+	label_i <- .nucleus_label(nucleus_i)
+	label_s <- .nucleus_label(nucleus_s)
 
-	spec_den_term_array
+	.spec_den_terms_to_array(
+		n_pairs = n_pairs,
+		term_names = c(
+			paste0("w", label_s, "mw", label_i),
+			paste0("w", label_i),
+			paste0("w", label_s, "pw", label_i),
+			paste0("w", label_i)
+		),
+		coef = c(
+			0.1 * d_sq,
+			0.3 * d_sq,
+			0.6 * d_sq,
+			c_sq
+		),
+		freq = c(
+			omega_s - omega_i,
+			omega_i,
+			omega_s + omega_i,
+			omega_i
+		)
+	)
+}
+
+#' Make spectral density term array for heteronuclear R2 relaxation
+#'
+#' This function encodes the coefficients and frequencies needed for
+#' `a_matrix_to_relax()` to calculate the heteronuclear transverse relaxation
+#' rate \eqn{R_2} of the observed spin \eqn{I}, including both dipole-dipole
+#' (DD) and chemical shift anisotropy (CSA) contributions.
+#'
+#' The implemented expression is
+#' \deqn{
+#' R_2(I) =
+#' \frac{1}{20} d_{IS}^2
+#' \left[
+#' 4J(0) + J(\omega_I - \omega_S) + 3J(\omega_I) +
+#' 6J(\omega_S) + 6J(\omega_I + \omega_S)
+#' \right]
+#' +
+#' \frac{1}{6} c_I^2
+#' \left[
+#' 4J(0) + 3J(\omega_I)
+#' \right],
+#' }
+#' where
+#' \deqn{
+#' d_{IS}^2 =
+#' \left(
+#' \frac{\mu_0}{4 \pi} \hbar \gamma_I \gamma_S r_{IS}^{-3}
+#' \right)^2
+#' }
+#' and
+#' \deqn{
+#' c_I^2 =
+#' \frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+#' }
+#' Here \eqn{\Delta\sigma_I} is the CSA anisotropy of the observed spin in
+#' fractional units, obtained from `delta_sigma_ppm`.
+#'
+#' The dipolar part is obtained from Solomon's transverse relaxation
+#' coefficient \eqn{\nu} for two unlike spins,
+#' \deqn{\nu = w_0 + 2w_1' + w_2,}
+#' given in Solomon (1955, Eq. 21), together with the unlike-spin transition
+#' probabilities in Solomon (1955, Eq. 35). Rewriting those transition
+#' probabilities in spectral-density form yields the standard dipolar
+#' contribution
+#' \deqn{
+#' R_2^{DD}(I) = \frac{1}{20} d_{IS}^2
+#' \left[
+#' 4J(0) + J(\omega_I - \omega_S) + 3J(\omega_I) +
+#' 6J(\omega_S) + 6J(\omega_I + \omega_S)
+#' \right].
+#' }
+#' In Abragam's notation, the same dipolar transverse relaxation expression
+#' appears in Chapter VIII, Eq. (89) of \emph{The Principles of Nuclear
+#' Magnetism} (Abragam, 1961), again written in terms of the rank-specific
+#' spectral densities \eqn{J^{(0)}} \eqn{J^{(1)}}, and \eqn{J^{(2)}}.
+#'
+#' The CSA term corresponds to Abragam's treatment of shielding-anisotropy
+#' relaxation in the same chapter, where for an
+#' axially symmetric CSA tensor (\eqn{\eta = 0}) his Eq. (142) can be written
+#' in the present notation as
+#' \deqn{
+#' R_2^{CSA} = \frac{1}{6} c_I^2 \left[4J(0) + 3J(\omega_I)\right]
+#' }
+#' with the identification
+#' \deqn{c_I^2 = \omega_I^2 \Delta\sigma_I^2 / 3.}
+#' The function then adds this CSA contribution to the dipolar result.
+#'
+#' This function uses a single spectral density function for both DD and CSA
+#' terms. That is an effective approximation appropriate when the CSA and
+#' dipolar interaction tensors are assumed to experience the same underlying
+#' motional spectral density.
+#'
+#' The underlying transition-probability treatment follows Solomon (1955)
+#' \doi{10.1103/PhysRev.99.559}, which in turn builds on the rapid-motion
+#' treatment of Abragam and Pound (1953) \doi{10.1103/PhysRev.92.943} and the
+#' dipolar correlation-function formalism of Bloembergen, Purcell, and Pound
+#' (1948) \doi{10.1103/PhysRev.73.679}.
+#'
+#' @param n_pairs integer number of atom pairs
+#' @param proton_mhz spectrometer proton field strength in MHz
+#' @param nucleus_i character scalar giving the observed nucleus, such as
+#'   `"15N"`
+#' @param nucleus_s character scalar giving the coupled partner nucleus, such
+#'   as `"1H"`
+#' @param r_is_angstrom numeric scalar internuclear distance \eqn{r_{IS}} in
+#'   Angstrom
+#' @param delta_sigma_ppm numeric scalar CSA anisotropy of the observed spin in
+#'   ppm
+#'
+#' @return Array with dimensions `(pairs, terms, components)`. The term
+#'   dimension is named with simplified frequency labels such as
+#'   `c("0", "wHmwN", "wN", "wH", "wHpwN")`, and the component dimension is
+#'   named `c("coef", "freq")`.
+#'
+#' @export
+make_r2_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "15N", nucleus_s = "1H", r_is_angstrom, delta_sigma_ppm) {
+	stopifnot(
+		is.numeric(n_pairs),
+		length(n_pairs) == 1,
+		n_pairs >= 0,
+		n_pairs == as.integer(n_pairs),
+		is.numeric(proton_mhz),
+		length(proton_mhz) == 1,
+		is.character(nucleus_i),
+		length(nucleus_i) == 1,
+		is.character(nucleus_s),
+		length(nucleus_s) == 1,
+		is.numeric(r_is_angstrom),
+		length(r_is_angstrom) == 1,
+		r_is_angstrom > 0,
+		is.numeric(delta_sigma_ppm),
+		length(delta_sigma_ppm) == 1
+	)
+	if (nucleus_i == nucleus_s) {
+		stop("`make_r2_spec_den_term_array()` currently implements the heteronuclear case only")
+	}
+
+	d_sq <- .dipolar_prefactor_sq(nucleus_i, nucleus_s) / (r_is_angstrom * 1e-10)^6
+	c_sq <- .csa_prefactor_sq(proton_mhz, nucleus_i, delta_sigma_ppm)
+	omega_i <- .larmor_omega(proton_mhz, nucleus_i)
+	omega_s <- .larmor_omega(proton_mhz, nucleus_s)
+	label_i <- .nucleus_label(nucleus_i)
+	label_s <- .nucleus_label(nucleus_s)
+
+	.spec_den_terms_to_array(
+		n_pairs = n_pairs,
+		term_names = c(
+			"0",
+			paste0("w", label_s, "mw", label_i),
+			paste0("w", label_i),
+			paste0("w", label_s),
+			paste0("w", label_s, "pw", label_i),
+			"0",
+			paste0("w", label_i)
+		),
+		coef = c(
+			0.2 * d_sq,
+			0.05 * d_sq,
+			0.15 * d_sq,
+			0.3 * d_sq,
+			0.3 * d_sq,
+			(4 / 6) * c_sq,
+			0.5 * c_sq
+		),
+		freq = c(
+			0,
+			omega_s - omega_i,
+			omega_i,
+			omega_s,
+			omega_s + omega_i,
+			0,
+			omega_i
+		)
+	)
+}
+
+#' Make spectral density term array for dipolar sigma cross relaxation
+#'
+#' This function encodes the coefficients and frequencies needed for
+#'    `a_matrix_to_relax()` to calculate the dipolar cross-relaxation
+#'    rate sigma for a pair of nuclei.
+#'
+#' The sigma cross-relaxation rate is defined
+#' \deqn{
+#' \sigma_{IS} =
+#' \frac{1}{10} d_{IS}^2
+#' \left( 6 J(\omega_I + \omega_S) - J(\omega_I - \omega_S) \right)
+#' }
+#' with
+#' \deqn{
+#' d_{IS}^2 =
+#' \left(
+#' \frac{\mu_0}{4 \pi} \hbar \gamma_I \gamma_S r_{IS}^{-3}
+#' \right)^2.
+#' }
+#'
+#' The returned array stores the two spectral density terms:
+#' \deqn{J(\omega_I - \omega_S) \text{ with coefficient } -\frac{1}{10} d_{IS}^2}
+#' \deqn{J(\omega_I + \omega_S) \text{ with coefficient } \frac{3}{5} d_{IS}^2.}
+#'
+#' This dipolar cross-relaxation term is obtained from Solomon's longitudinal
+#' cross coefficient \eqn{\sigma = w_2 - w_0} for two unlike spins in Solomon
+#' (1955, Eq. 15), together with the unlike-spin transition probabilities
+#' \eqn{w_0} and \eqn{w_2} in Solomon (1955, Eq. 35). The same unlike-spin 
+#' longitudinal cross-relaxation term appears in Chapter VIII, Eq. (88) of 
+#' \emph{The Principles of Nuclear Magnetism} (Abragam, 1961).
+#'
+#' The static magnetic field is inferred from `proton_mhz` using the proton
+#' gyromagnetic ratio, and the Larmor frequencies of the requested nuclei are
+#' then calculated from an internal lookup table of gyromagnetic ratios.
+#' Supported nucleus names currently include `"1H"`, `"13C"`, `"15N"`,
+#' `"19F"`, `"31P"`, and `"2H"`.
+#'
+#' If `r_is_angstrom` is `NA`, the returned coefficients omit the
+#' \eqn{r_{IS}^{-6}} factor and are therefore suitable for the distance-
+#' dependent representation in which internuclear distance is already encoded in
+#' the dipolar interaction amplitudes. If `r_is_angstrom` is supplied, the
+#' returned coefficients include the \eqn{r_{IS}^{-6}} factor explicitly and
+#' are suitable for a unit-tensor representation.
+#'
+#' The underlying transition-probability treatment follows Solomon (1955)
+#' \doi{10.1103/PhysRev.99.559}, which in turn builds on the rapid-motion
+#' treatment of Abragam and Pound (1953) \doi{10.1103/PhysRev.92.943} and the
+#' dipolar correlation-function formalism of Bloembergen, Purcell, and Pound
+#' (1948) \doi{10.1103/PhysRev.73.679}.
+#'
+#' @param n_pairs integer number of atom pairs
+#' @param proton_mhz spectrometer proton field strength in MHz
+#' @param nucleus_i character scalar giving the first nucleus, such as `"1H"`
+#' @param nucleus_s character scalar giving the second nucleus. Defaults to
+#'   `nucleus_i`.
+#' @param r_is_angstrom optional numeric scalar internuclear distance
+#'   \eqn{r_{IS}} in Angstrom. If `NA`, distance dependence is omitted from the
+#'   coefficients.
+#'
+#' @return Array with dimensions `(pairs, terms, components)`. The term
+#'    dimension is named according to the simplified frequency labels implied
+#'    by `nucleus_i` and `nucleus_s`, such as `c("0", "2wH")` for
+#'    homonuclear proton sigma or `c("wHmwN", "wHpwN")` for heteronuclear
+#'    proton-nitrogen sigma. The component dimension is named
+#'    `c("coef", "freq")`.
+#'
+#' @export
+make_sigma_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "1H", nucleus_s = nucleus_i, r_is_angstrom = NA_real_) {
+	stopifnot(
+		is.numeric(n_pairs),
+		length(n_pairs) == 1,
+		n_pairs >= 0,
+		n_pairs == as.integer(n_pairs),
+		is.numeric(proton_mhz),
+		length(proton_mhz) == 1,
+		is.character(nucleus_i),
+		length(nucleus_i) == 1,
+		is.character(nucleus_s),
+		length(nucleus_s) == 1,
+		is.numeric(r_is_angstrom),
+		length(r_is_angstrom) == 1
+	)
+	if (!is.na(r_is_angstrom) && r_is_angstrom <= 0) {
+		stop("`r_is_angstrom` must be positive when supplied")
+	}
+
+	omega_i <- .larmor_omega(proton_mhz, nucleus_i)
+	omega_s <- .larmor_omega(proton_mhz, nucleus_s)
+	d_sq <- .dipolar_prefactor_sq(nucleus_i, nucleus_s)
+	if (!is.na(r_is_angstrom)) {
+		d_sq <- d_sq / (r_is_angstrom * 1e-10)^6
+	}
+	label_i <- .nucleus_label(nucleus_i)
+	label_s <- .nucleus_label(nucleus_s)
+
+	.spec_den_terms_to_array(
+		n_pairs = n_pairs,
+		term_names = c(
+			paste0("w", label_i, "mw", label_s),
+			paste0("w", label_i, "pw", label_s)
+		),
+		coef = c(-0.1 * d_sq, 0.6 * d_sq),
+		freq = c(omega_i - omega_s, omega_i + omega_s)
+	)
+}
+
+
 }
 
 #' Tests with toy example from Smith 2020 J Biomol NMR

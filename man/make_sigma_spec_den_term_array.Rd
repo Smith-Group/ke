@@ -2,32 +2,85 @@
 % Please edit documentation in R/ke_prep.R
 \name{make_sigma_spec_den_term_array}
 \alias{make_sigma_spec_den_term_array}
-\title{Make spectral density term array for proton-proton cross relaxation}
+\title{Make spectral density term array for dipolar sigma cross relaxation}
 \usage{
-make_sigma_spec_den_term_array(n_pairs, proton_mhz)
+make_sigma_spec_den_term_array(
+  n_pairs,
+  proton_mhz,
+  nucleus_i = "1H",
+  nucleus_s = nucleus_i,
+  r_is_angstrom = NA_real_
+)
 }
 \arguments{
 \item{n_pairs}{integer number of atom pairs}
 
 \item{proton_mhz}{spectrometer proton field strength in MHz}
+
+\item{nucleus_i}{character scalar giving the first nucleus, such as \code{"1H"}}
+
+\item{nucleus_s}{character scalar giving the second nucleus. Defaults to
+\code{nucleus_i}.}
+
+\item{r_is_angstrom}{optional numeric scalar internuclear distance
+\eqn{r_{IS}} in Angstrom. If \code{NA}, distance dependence is omitted from the
+coefficients.}
 }
 \value{
 Array with dimensions \verb{(pairs, terms, components)}. The term
-dimension is named \code{c("0", "2wH")} and the component dimension is
-named \code{c("coef", "freq")}.
+dimension is named according to the simplified frequency labels implied
+by \code{nucleus_i} and \code{nucleus_s}, such as \code{c("0", "2wH")} for
+homonuclear proton sigma or \code{c("wHmwN", "wHpwN")} for heteronuclear
+proton-nitrogen sigma. The component dimension is named
+\code{c("coef", "freq")}.
 }
 \description{
-This helper encodes the coefficients and frequencies needed for
-\code{a_matrix_to_relax()} to calculate the homonuclear cross-relaxation
-rate sigma.
+This function encodes the coefficients and frequencies needed for
+\code{a_matrix_to_relax()} to calculate the dipolar cross-relaxation
+rate sigma for a pair of nuclei.
 }
 \details{
-Following the notation of Peter (2001) \doi{10.1023/a:1011241030461},
-the sigma cross-relaxation rate is defined
-\deqn{\sigma = \frac{1}{10} K^2 \left( 3 J(2 \omega_H) - \frac{1}{2} J(0) \right)}
-\deqn{K = \frac{\mu_0}{4 \pi} \hbar \gamma_H^2}
+The sigma cross-relaxation rate is defined
+\deqn{
+\sigma_{IS} =
+\frac{1}{10} d_{IS}^2
+\left( 6 J(\omega_I + \omega_S) - J(\omega_I - \omega_S) \right)
+}
+with
+\deqn{
+d_{IS}^2 =
+\left(
+\frac{\mu_0}{4 \pi} \hbar \gamma_I \gamma_S r_{IS}^{-3}
+\right)^2.
+}
 
 The returned array stores the two spectral density terms:
-\deqn{J(0) \text{ with coefficient } -\frac{1}{20} K^2}
-\deqn{J(2 \omega_H) \text{ with coefficient } \frac{3}{10} K^2.}
+\deqn{J(\omega_I - \omega_S) \text{ with coefficient } -\frac{1}{10} d_{IS}^2}
+\deqn{J(\omega_I + \omega_S) \text{ with coefficient } \frac{3}{5} d_{IS}^2.}
+
+This dipolar cross-relaxation term is obtained from Solomon's longitudinal
+cross coefficient \eqn{\sigma = w_2 - w_0} for two unlike spins in Solomon
+(1955, Eq. 15), together with the unlike-spin transition probabilities
+\eqn{w_0} and \eqn{w_2} in Solomon (1955, Eq. 35). The same unlike-spin
+longitudinal cross-relaxation term appears in Chapter VIII, Eq. (88) of
+\emph{The Principles of Nuclear Magnetism} (Abragam, 1961).
+
+The static magnetic field is inferred from \code{proton_mhz} using the proton
+gyromagnetic ratio, and the Larmor frequencies of the requested nuclei are
+then calculated from an internal lookup table of gyromagnetic ratios.
+Supported nucleus names currently include \code{"1H"}, \code{"13C"}, \code{"15N"},
+\code{"19F"}, \code{"31P"}, and \code{"2H"}.
+
+If \code{r_is_angstrom} is \code{NA}, the returned coefficients omit the
+\eqn{r_{IS}^{-6}} factor and are therefore suitable for the distance-
+dependent representation in which internuclear distance is already encoded in
+the dipolar interaction amplitudes. If \code{r_is_angstrom} is supplied, the
+returned coefficients include the \eqn{r_{IS}^{-6}} factor explicitly and
+are suitable for a unit-tensor representation.
+
+The underlying transition-probability treatment follows Solomon (1955)
+\doi{10.1103/PhysRev.99.559}, which in turn builds on the rapid-motion
+treatment of Abragam and Pound (1953) \doi{10.1103/PhysRev.92.943} and the
+dipolar correlation-function formalism of Bloembergen, Purcell, and Pound
+(1948) \doi{10.1103/PhysRev.73.679}.
 }

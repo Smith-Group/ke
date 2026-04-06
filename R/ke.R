@@ -2319,3 +2319,223 @@ coord_array_to_sigma_energy <- function(coord_array, rates, spec_den_data_list, 
 	
 	value
 }
+
+#' Calculate relaxation rates from atomic coordinates
+#'
+#' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
+#' @param rates named numeric vector with rates
+#' @param spec_den_relax_data_list list of data for calculating relaxation rates
+#'
+#' @export
+coord_array_to_relax <- function(coord_array, rates, spec_den_relax_data_list) {
+	lapply(spec_den_relax_data_list, function(spec_den_relax_data) {
+		unit <- spec_den_relax_data[["unit"]]
+		if (is.null(unit)) {
+			unit <- FALSE
+		}
+		stopifnot(is.logical(unit), length(unit) == 1)
+
+		relax_data_list <- spec_den_relax_data[["relax_data_list"]]
+		if (is.null(relax_data_list)) {
+			stop("`spec_den_relax_data` must contain `relax_data_list`")
+		}
+
+		# calculate internuclear vectors (convert from Å^-3 to m^-3)
+		r_array <- coord_array_to_r_array(coord_array * 1e-10, spec_den_relax_data[["atom_pairs"]][, 1:2, drop = FALSE])
+
+		# calculate dipole-dipole interaction tensors
+		d_array <- r_array_to_d_array(r_array, dist = !unit, unit = unit)
+
+		# calculate the factor by which the number of models should be expanded
+		n_shift <- ncol(spec_den_relax_data[["groupings"]]) / dim(coord_array)[3]
+
+		# shift tensor components from atom pairs into virtual models
+		d_array_shifted <- array_shift(d_array, n_shift)
+
+		# calculate matrix of g values
+		g_mat <- apply(spec_den_relax_data[["groupings"]], 1, d_array_to_g, d_array = d_array_shifted)
+
+		# calculate matrix of a values
+		a_int_mat <- g_matrix_to_a_matrix(g_mat, spec_den_relax_data[["a_int_coef"]])
+
+		# calculate lambda eigenvalues
+		lambda_int_vec <- -colSums(rates[rownames(spec_den_relax_data[["lambda_int_coef"]])] * spec_den_relax_data[["lambda_int_coef"]])
+
+		# calculate unit dipole-dipole interaction tensors if not already done
+		d_unit_array <- if (unit) d_array else r_array_to_d_array(r_array, dist = FALSE, unit = TRUE)
+
+		# shift unit tensor components from atom pairs into virtual models
+		d_unit_array_shifted <- array_shift(d_unit_array, n_shift)
+		
+		# calculate overall modes from diffusion constants
+		overall_modes <- dxyz_dunit_to_overall_modes(rates[c("Dx", "Dy", "Dz")], d_unit_array_shifted)
+
+		relax_mat <- vapply(
+			relax_data_list,
+			function(relax_entry) {
+				a_matrix_to_relax(
+					a_int_mat,
+					lambda_int_vec,
+					overall_modes[["a_overall_matrix"]],
+					overall_modes[["lambda_overall_vec"]],
+					relax_entry[["spec_den_term_array"]]
+				)
+			},
+			FUN.VALUE = numeric(nrow(a_int_mat))
+		)
+		if (is.null(dim(relax_mat))) {
+			relax_mat <- matrix(relax_mat, ncol = 1)
+		}
+		colnames(relax_mat) <- names(relax_data_list)
+		relax_mat
+	})
+}
+
+#' Calculate relaxation rate restraint energy from atomic coordinates
+#'
+#' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
+#' @param rates named numeric vector with ensemble rates
+#' @param spec_den_relax_data_list list of data for calculating relaxation rates
+#' @param loss_func loss function to use
+#' @param ... additional parameters passed to `loss_func`
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return total restraint energy calculated using `loss_func`
+#'
+#' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array
+#' (atoms, xyz, models).
+#'
+#' @export
+coord_array_to_relax_energy <- function(coord_array, rates, spec_den_relax_data_list, loss_func = power_scaled_loss, ..., gradient = FALSE) {
+	# intermediate derivatives that need to be captured for back-propagation
+	d_array_list <- g_matrix_list <- relax_vector_list <- vector("list", length(spec_den_relax_data_list))
+
+	for (i in seq_along(spec_den_relax_data_list)) {
+		spec_den_relax_data <- spec_den_relax_data_list[[i]]
+		unit <- spec_den_relax_data[["unit"]]
+		if (is.null(unit)) {
+			unit <- FALSE
+		}
+		stopifnot(is.logical(unit), length(unit) == 1)
+
+		relax_data_list <- spec_den_relax_data[["relax_data_list"]]
+		if (is.null(relax_data_list)) {
+			stop("`spec_den_relax_data` must contain `relax_data_list`")
+		}
+
+		# calculate internuclear vectors (convert from Å to m)
+		r_array <- coord_array_to_r_array(coord_array * 1e-10, spec_den_relax_data[["atom_pairs"]][, 1:2, drop = FALSE])
+
+		# calculate dipole-dipole interaction tensors
+		d_array_list[[i]] <- r_array_to_d_array(r_array, dist = !unit, unit = unit, gradient = gradient)
+
+		# calculate the factor by which the number of models should be expanded
+		n_shift <- ncol(spec_den_relax_data[["groupings"]]) / dim(coord_array)[3]
+
+		# shift tensor components from atom pairs into virtual models
+		d_array_shifted <- array_shift(d_array_list[[i]], n_shift)
+
+		# calculate matrix of g values
+		g_matrix_list[[i]] <- d_array_to_g_matrix(d_array_shifted, spec_den_relax_data[["groupings"]], gradient = gradient)
+
+		# calculate matrix of internal amplitudes
+		a_int_matrix <- g_matrix_to_a_matrix(g_matrix_list[[i]], spec_den_relax_data[["a_int_coef"]])
+
+		# calculate internal lambda eigenvalues
+		lambda_int_vec <- -colSums(
+			rates[rownames(spec_den_relax_data[["lambda_int_coef"]])] * spec_den_relax_data[["lambda_int_coef"]]
+		)
+
+		# calculate unit dipole-dipole interaction tensors if not already done
+		d_unit_array <- if (unit) d_array_list[[i]] else r_array_to_d_array(r_array, dist = FALSE, unit = TRUE)
+
+		# shift unit tensor components from atom pairs into virtual models
+		d_unit_array_shifted <- array_shift(d_unit_array, n_shift)
+
+		# calculate overall modes from diffusion constants
+		overall_modes <- dxyz_dunit_to_overall_modes(rates[c("Dx", "Dy", "Dz")], d_unit_array_shifted)
+
+		relax_vector_list[[i]] <- lapply(
+			relax_data_list,
+			function(relax_entry) {
+				a_matrix_to_relax(
+					a_int_matrix,
+					lambda_int_vec,
+					overall_modes[["a_overall_matrix"]],
+					overall_modes[["lambda_overall_vec"]],
+					relax_entry[["spec_den_term_array"]],
+					gradient = gradient
+				)
+			}
+		)
+	}
+
+	# combine calculated relaxation rates into a single vector
+	relax_vector <- unlist(
+		lapply(relax_vector_list, function(x) unlist(x, use.names = FALSE)),
+		use.names = FALSE
+	)
+
+	# combine target relaxation rates into a single vector
+	relax0_vector <- unlist(
+		lapply(spec_den_relax_data_list, function(spec_den_relax_data) {
+			unlist(lapply(spec_den_relax_data[["relax_data_list"]], `[[`, "value"), use.names = FALSE)
+		}),
+		use.names = FALSE
+	)
+
+	# calculate energies from the relaxation-rate vectors
+	energy_vector <- loss_func(relax_vector, relax0_vector, ..., gradient = gradient)
+
+	# return the sum of all the individual restraint energies
+	value <- sum(energy_vector)
+
+	if (gradient) {
+		# initialize empty gradient with dimensions equal to input coordinates
+		d_energy_d_coord_array <- coord_array
+		d_energy_d_coord_array[] <- 0
+
+		energy_grad <- attr(energy_vector, "gradient")
+		offset <- 0
+
+		for (i in seq_along(spec_den_relax_data_list)) {
+			spec_den_relax_data <- spec_den_relax_data_list[[i]]
+			relax_value_list <- relax_vector_list[[i]]
+			d_energy_d_a_int_matrix <- matrix(
+				0,
+				nrow = nrow(g_matrix_list[[i]]),
+				ncol = ncol(spec_den_relax_data[["a_int_coef"]])
+			)
+
+			for (j in seq_along(relax_value_list)) {
+				relax_value <- relax_value_list[[j]]
+				d_energy_d_relax <- energy_grad[seq.int(offset + 1, length.out = length(relax_value))]
+				offset <- offset + length(relax_value)
+
+				d_energy_d_a_int_matrix <- d_energy_d_a_int_matrix +
+					a_matrix_to_relax_backprop(attr(relax_value, "gradient"), d_energy_d_relax)
+			}
+
+			# back-propagate derivatives from a matrix to g matrix
+			d_energy_d_g_matrix <- g_matrix_to_a_matrix_backprop(spec_den_relax_data[["a_int_coef"]], d_energy_d_a_int_matrix)
+
+			# back-propagate derivatives from g matrix to d array
+			d_energy_d_d_array <- d_array_to_g_matrix_backprop(attr(g_matrix_list[[i]], "gradient"), d_energy_d_g_matrix)
+
+			# back-propagate derivatives from d array to r array
+			d_energy_d_r_array <- r_array_to_d_array_backprop(attr(d_array_list[[i]], "gradient"), d_energy_d_d_array)
+
+			# accumulate back-propagated derivatives from r array into coord array gradient
+			d_energy_d_coord_array <- coord_array_to_r_array_backprop(
+				d_energy_d_coord_array,
+				spec_den_relax_data[["atom_pairs"]][, 1:2, drop = FALSE],
+				d_energy_d_r_array
+			)
+		}
+
+		# set coordinate gradient to accumulated values
+		attr(value, "gradient") <- d_energy_d_coord_array * 1e-10
+	}
+
+	value
+}

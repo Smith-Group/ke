@@ -2073,6 +2073,55 @@ read_spec_den_data <- function(prefix_path) {
 	)
 }
 
+#' Read data for calculating spectral-density-based relaxation rates
+#'
+#' @param prefix_path to prefix of four CSV files
+#'
+#' @return A list with elements:
+#'   \describe{
+#'     \item{`atom_pairs`}{data frame of atom-pair metadata and target value
+#'       columns, excluding flattened spectral-density term columns ending in
+#'       `_coef` or `_freq`}
+#'     \item{`unit`}{logical flag indicating whether the first interaction is
+#'       encoded by unit-vector identifiers rather than atom identifiers. The
+#'       current implementation returns a length-one logical. It is intended to
+#'       generalize to one flag per interaction when cross-correlation support
+#'       is added.}
+#'     \item{`relax_data_list`}{named list of per-rate entries returned by
+#'       [atom_relax_df_to_spec_den_term_array_list()]}
+#'     \item{`groupings`}{grouping matrix}
+#'     \item{`a_int_coef`}{matrix of amplitudes used to construct internal-motion
+#'       coefficients}
+#'     \item{`lambda_int_coef`}{matrix of rate coefficients used to construct
+#'       internal-motion eigenvalues}
+#'   }
+#'
+#' @export
+read_spec_den_relax_data <- function(prefix_path) {
+
+	atom_relax_df <- utils::read.csv(paste0(prefix_path, "_atom_relax.csv"), check.names = FALSE)
+	groupings <- unname(as.matrix(utils::read.csv(paste0(prefix_path, "_groupings.csv"), header=FALSE, row.names=NULL)))
+	a_int_coef <- as.matrix(utils::read.csv(paste0(prefix_path, "_a_coef.csv"), check.names=FALSE))
+	lambda_int_coef <- as.matrix(utils::read.csv(paste0(prefix_path, "_lambda_coef.csv"), check.names=FALSE, row.names=1))
+	relax_data_list <- atom_relax_df_to_spec_den_term_array_list(atom_relax_df)
+	first_two_unit <- grepl("_unit$", names(atom_relax_df)[1:2])
+	if (any(first_two_unit) && !all(first_two_unit)) {
+		stop("The first two columns of `*_atom_relax.csv` must either both end in `_unit` or neither may")
+	}
+	unit <- all(first_two_unit)
+	atom_pair_cols <- !grepl("_(coef|freq)$", names(atom_relax_df))
+	atom_pairs <- atom_relax_df[, atom_pair_cols, drop = FALSE]
+	
+	list(
+		atom_pairs = atom_pairs,
+		unit = unit,
+		relax_data_list = relax_data_list,
+		groupings = groupings,
+		a_int_coef = a_int_coef,
+		lambda_int_coef = lambda_int_coef
+	)
+}
+
 #' Shift from one array dimension to another
 #'
 #' @param a array whose dimensions should be shifted

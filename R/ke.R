@@ -1702,6 +1702,355 @@ coord_array_to_g_energy_refactored <- function(coord_array, atom_pairs, grouping
 	value
 }
 
+#' Convert one rate block of atom-relax columns into a spectral-density term array
+#'
+#' Reconstruct a per-rate spectral-density term array from columns in an
+#' `*_atom_relax.csv`-style data frame.
+#'
+#' The expected column naming convention is
+#' `"<rate_name>_<freq_name>_<component>"`, where `<component>` is either
+#' `"coef"` or `"freq"`. If present, the special column
+#' `"<rate_name>_value"` stores the target relaxation value associated with
+#' that rate block.
+#'
+#' Parsing is anchored to the supplied `rate_name`, so the rate name itself may
+#' contain underscores. The `freq_name` portion must not contain underscores.
+#' For each `freq_name`, both `coef` and `freq` columns must be present.
+#'
+#' @param atom_relax_df data frame containing one or more rate blocks encoded as
+#'   atom-relax columns
+#' @param rate_name character scalar giving the rate block to extract
+#'
+#' @return A list with elements:
+#'   \describe{
+#'     \item{`value`}{numeric vector from the `"<rate_name>_value"` column, or
+#'       `NULL` if that column is absent}
+#'     \item{`spec_den_term_array`}{numeric array `(pairs, terms, 2)` with
+#'       second-dimension names taken from `<freq_name>` and third-dimension
+#'       names `c("coef", "freq")`}
+#'   }
+#'
+#' @examples
+#' atom_relax_df <- data.frame(
+#'   r1_value = c(1.0, 2.0),
+#'   r1_0_coef = c(0.1, 0.2),
+#'   r1_0_freq = c(0, 0),
+#'   r1_2wH_coef = c(0.3, 0.4),
+#'   r1_2wH_freq = c(100, 100),
+#'   check.names = FALSE
+#' )
+#'
+#' out <- atom_relax_columns_to_spec_den_term_array(atom_relax_df, "r1")
+#' out$value
+#' dim(out$spec_den_term_array)
+#' dimnames(out$spec_den_term_array)[[2]]
+#'
+#' @export
+atom_relax_columns_to_spec_den_term_array <- function(atom_relax_df, rate_name) {
+	stopifnot(
+		is.data.frame(atom_relax_df),
+		is.character(rate_name),
+		length(rate_name) == 1,
+		nzchar(rate_name)
+	)
+
+	value_col <- paste0(rate_name, "_value")
+
+	rate_prefix <- paste0(rate_name, "_")
+	rate_cols <- names(atom_relax_df)[startsWith(names(atom_relax_df), rate_prefix)]
+	term_cols <- setdiff(rate_cols, value_col)
+
+	if (!length(term_cols)) {
+		stop("No spectral-density term columns found for rate `", rate_name, "`")
+	}
+
+	col_suffix <- sub(paste0("^", rate_prefix), "", term_cols)
+	col_parts <- regexec("^([^_]+)_(coef|freq)$", col_suffix)
+	col_matches <- regmatches(col_suffix, col_parts)
+
+	if (any(lengths(col_matches) != 3)) {
+		stop(
+			"All term columns for rate `", rate_name,
+			"` must match `", rate_name, "_<freq_name>_<coef|freq>` with no underscores in <freq_name>"
+		)
+	}
+
+	freq_names <- vapply(col_matches, `[`, character(1), 2)
+	components <- vapply(col_matches, `[`, character(1), 3)
+
+	if (anyDuplicated(term_cols)) {
+		stop("Duplicate term columns found for rate `", rate_name, "`")
+	}
+
+	freq_levels <- unique(freq_names)
+	for (freq_name in freq_levels) {
+		freq_components <- components[freq_names == freq_name]
+		if (!setequal(freq_components, c("coef", "freq"))) {
+			stop(
+				"Rate `", rate_name, "` term `", freq_name,
+				"` must have both `coef` and `freq` columns"
+			)
+		}
+	}
+
+	spec_den_term_array <- array(
+		NA_real_,
+		dim = c(nrow(atom_relax_df), length(freq_levels), 2),
+		dimnames = list(NULL, freq_levels, c("coef", "freq"))
+	)
+
+	for (j in seq_along(term_cols)) {
+		spec_den_term_array[, freq_names[j], components[j]] <- atom_relax_df[[term_cols[j]]]
+	}
+
+	list(
+		value = if (value_col %in% names(atom_relax_df)) atom_relax_df[[value_col]] else NULL,
+		spec_den_term_array = spec_den_term_array
+	)
+}
+
+#' Convert a spectral-density term array into one rate block of atom-relax columns
+#'
+#' Flatten a per-rate spectral-density term array into columns suitable for an
+#' `*_atom_relax.csv`-style data frame.
+#'
+#' Output columns follow the naming convention
+#' `"<rate_name>_<freq_name>_<component>"`, where `<component>` is either
+#' `"coef"` or `"freq"`. If `value` is supplied, the additional
+#' `"<rate_name>_value"` column stores the target relaxation values.
+#'
+#' The second dimension of `spec_den_term_array` supplies `<freq_name>` through
+#' its dimnames. The third dimension must have length two and corresponds to the
+#' `coef` and `freq` components. If third-dimension names are missing, they are
+#' assumed to be ordered as `c("coef", "freq")`.
+#'
+#' @param spec_den_term_array numeric array `(pairs, terms, 2)`
+#' @param rate_name character scalar giving the rate block name
+#' @param value optional numeric vector of length `dim(spec_den_term_array)[1]`
+#'   to store in the `"<rate_name>_value"` column. If `NULL`, the value column
+#'   is omitted.
+#'
+#' @return A data frame containing one `"<rate_name>_value"` column, if
+#'   requested, plus one `coef` and one `freq` column for each term in
+#'   `spec_den_term_array`.
+#'
+#' @examples
+#' spec_den_term_array <- array(
+#'   c(0.1, 0.2, 0, 0, 0.3, 0.4, 100, 100),
+#'   dim = c(2, 2, 2),
+#'   dimnames = list(NULL, c("0", "2wH"), c("coef", "freq"))
+#' )
+#'
+#' spec_den_term_array_to_atom_relax_columns(
+#'   spec_den_term_array = spec_den_term_array,
+#'   rate_name = "r1",
+#'   value = c(1.0, 2.0)
+#' )
+#'
+#' @export
+spec_den_term_array_to_atom_relax_columns <- function(spec_den_term_array, rate_name, value = NULL) {
+	stopifnot(
+		is.array(spec_den_term_array),
+		length(dim(spec_den_term_array)) == 3,
+		dim(spec_den_term_array)[3] == 2,
+		is.character(rate_name),
+		length(rate_name) == 1,
+		nzchar(rate_name)
+	)
+
+	n_pairs <- dim(spec_den_term_array)[1]
+	term_names <- dimnames(spec_den_term_array)[[2]]
+	component_names <- dimnames(spec_den_term_array)[[3]]
+
+	if (is.null(term_names)) {
+		stop("`spec_den_term_array` must have second-dimension names for term frequencies")
+	}
+	if (any(grepl("_", term_names, fixed = TRUE))) {
+		stop("Term names in `spec_den_term_array` must not contain underscores")
+	}
+
+	if (is.null(component_names)) {
+		component_names <- c("coef", "freq")
+	} else if (!identical(component_names, c("coef", "freq"))) {
+		stop("Third-dimension names of `spec_den_term_array` must be `c(\"coef\", \"freq\")`")
+	}
+
+	if (!is.null(value)) {
+		stopifnot(is.numeric(value), length(value) == n_pairs)
+	}
+
+	out <- data.frame(row.names = seq_len(n_pairs), check.names = FALSE)
+	if (!is.null(value)) {
+		out[[paste0(rate_name, "_value")]] <- value
+	}
+
+	for (term_name in term_names) {
+		for (component_name in component_names) {
+			out[[paste(rate_name, term_name, component_name, sep = "_")]] <-
+				spec_den_term_array[, term_name, component_name]
+		}
+	}
+
+	out
+}
+
+#' Convert atom-relax columns into a named list of spectral-density term arrays
+#'
+#' Reconstruct all rate blocks in an `*_atom_relax.csv`-style data frame as a
+#' named list. Each list element contains both the optional target relaxation
+#' values and the corresponding spectral-density term array for one rate.
+#'
+#' Rate names are discovered automatically from columns ending in `_value`,
+#' `_coef`, or `_freq`. Parsing proceeds from the right, so rate names may
+#' contain underscores. Term-frequency names must not contain underscores and
+#' must be paired as `<freq_name>_coef` and `<freq_name>_freq`.
+#'
+#' @param atom_relax_df data frame containing one or more atom-relax rate blocks
+#'
+#' @return Named list whose elements are the return values of
+#'   [atom_relax_columns_to_spec_den_term_array()]. Each element is itself a
+#'   list with entries `value` and `spec_den_term_array`.
+#'
+#' @examples
+#' atom_relax_df <- data.frame(
+#'   r1_value = c(1.0, 2.0),
+#'   r1_0_coef = c(0.1, 0.2),
+#'   r1_0_freq = c(0, 0),
+#'   r2_0_coef = c(0.3, 0.4),
+#'   r2_0_freq = c(10, 10),
+#'   check.names = FALSE
+#' )
+#'
+#' atom_relax_df_to_spec_den_term_array_list(atom_relax_df)
+#'
+#' @export
+atom_relax_df_to_spec_den_term_array_list <- function(atom_relax_df) {
+
+	stopifnot(is.data.frame(atom_relax_df))
+
+	if (!ncol(atom_relax_df)) {
+		return(list())
+	}
+
+	rate_names <- character(0)
+	for (col_name in names(atom_relax_df)) {
+		if (grepl("_value$", col_name)) {
+			rate_names <- c(rate_names, sub("_value$", "", col_name))
+			next
+		}
+
+		col_parts <- regexec("^(.+)_([^_]+)_(coef|freq)$", col_name)
+		col_match <- regmatches(col_name, col_parts)[[1]]
+		if (length(col_match) == 4) {
+			rate_names <- c(rate_names, col_match[2])
+		}
+	}
+
+	rate_names <- unique(rate_names)
+	if (!length(rate_names)) {
+		# Re-enable this check once all supported inputs are expected to use the
+		# `*_atom_relax.csv` rate-column format.
+		# stop("No atom-relax rate columns found")
+		return(list())
+	}
+
+	out <- lapply(rate_names, function(rate_name) {
+		atom_relax_columns_to_spec_den_term_array(atom_relax_df, rate_name)
+	})
+	names(out) <- rate_names
+
+	out
+}
+
+#' Convert a named list of spectral-density term arrays into atom-relax columns
+#'
+#' Flatten a named list of per-rate spectral-density term arrays into a single
+#' data frame suitable for an `*_atom_relax.csv`-style file.
+#'
+#' Each element of `spec_den_term_array_list` must be named by the desired
+#' rate name and must either be:
+#' \itemize{
+#'   \item a spectral-density term array `(pairs, terms, 2)`, or
+#'   \item a list with elements `spec_den_term_array` and optional `value`
+#' }
+#' In the second form, `value` is written to the corresponding
+#' `"<rate_name>_value"` column.
+#'
+#' @param spec_den_term_array_list named list of per-rate spectral-density term
+#'   arrays, or named list of lists containing `spec_den_term_array` and
+#'   optional `value`
+#'
+#' @return Data frame combining all rate blocks side by side using the atom-
+#'   relax column naming convention
+#'
+#' @examples
+#' spec_den_term_array_list <- list(
+#'   r1 = list(
+#'     value = c(1.0, 2.0),
+#'     spec_den_term_array = array(
+#'       c(0.1, 0.2, 0, 0),
+#'       dim = c(2, 1, 2),
+#'       dimnames = list(NULL, "0", c("coef", "freq"))
+#'     )
+#'   ),
+#'   r2 = list(
+#'     spec_den_term_array = array(
+#'       c(0.3, 0.4, 10, 10),
+#'       dim = c(2, 1, 2),
+#'       dimnames = list(NULL, "0", c("coef", "freq"))
+#'     )
+#'   )
+#' )
+#'
+#' spec_den_term_array_list_to_atom_relax_df(spec_den_term_array_list)
+#'
+#' @export
+spec_den_term_array_list_to_atom_relax_df <- function(spec_den_term_array_list) {
+
+	stopifnot(is.list(spec_den_term_array_list))
+
+	if (!length(spec_den_term_array_list)) {
+		return(data.frame(check.names = FALSE))
+	}
+	if (is.null(names(spec_den_term_array_list)) ||
+		any(!nzchar(names(spec_den_term_array_list)))) {
+		stop("`spec_den_term_array_list` must be a named list")
+	}
+
+	rate_dfs <- lapply(names(spec_den_term_array_list), function(rate_name) {
+		rate_obj <- spec_den_term_array_list[[rate_name]]
+
+		if (is.array(rate_obj)) {
+			spec_den_term_array_to_atom_relax_columns(
+				spec_den_term_array = rate_obj,
+				rate_name = rate_name,
+				value = NULL
+			)
+		} else if (is.list(rate_obj) &&
+			"spec_den_term_array" %in% names(rate_obj)) {
+			spec_den_term_array_to_atom_relax_columns(
+				spec_den_term_array = rate_obj[["spec_den_term_array"]],
+				rate_name = rate_name,
+				value = rate_obj[["value"]]
+			)
+		} else {
+			stop(
+				"Each element of `spec_den_term_array_list` must be an array or a list ",
+				"containing `spec_den_term_array` and optional `value`"
+			)
+		}
+	})
+
+	n_rows <- vapply(rate_dfs, nrow, integer(1))
+	if (length(unique(n_rows)) != 1) {
+		stop("All rate blocks must have the same number of rows")
+	}
+
+	out <- do.call(cbind, rate_dfs)
+	value_cols <- grepl("_value$", names(out))
+	out[, c(which(value_cols), which(!value_cols)), drop = FALSE]
+}
+
 #' Read data for calculating spectral density functions
 #'
 #' @param prefix_path to prefix of four CSV files

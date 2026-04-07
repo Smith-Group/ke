@@ -1205,15 +1205,15 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_array, dunit_b_array =
 	}
 	blend_vec <- if (regularize) s2_vec else rep(1, length(s2_vec))
 
-		# Isotropic
-		if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy)) &&
-			abs(dx - dz) <= tol * max(1, abs(dx), abs(dz))) {
-			a_overall_matrix <- matrix(
-				rowSums(dunit_a_unit_matrix * dunit_b_unit_matrix),
-				nrow = nrow(dunit_a_matrix),
-				ncol = 1,
-				dimnames = list(NULL, "overall1")
-			)
+	# Isotropic
+	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy)) &&
+		abs(dx - dz) <= tol * max(1, abs(dx), abs(dz))) {
+		a_overall_matrix <- matrix(
+			rowSums(dunit_a_unit_matrix * dunit_b_unit_matrix),
+			nrow = nrow(dunit_a_matrix),
+			ncol = 1,
+			dimnames = list(NULL, "overall1")
+		)
 		lambda_overall_vec <- c(overall1 = -6 * dx)
 		return(list(
 			a_overall_matrix = a_overall_matrix,
@@ -1222,19 +1222,19 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_array, dunit_b_array =
 	}
 
 	# Axially symmetric
-		if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy))) {
-			a_overall_matrix_dir <- cbind(
-				dunit_a_unit_matrix[, 1] * dunit_b_unit_matrix[, 1],
-				dunit_a_unit_matrix[, 2] * dunit_b_unit_matrix[, 2] +
-					dunit_a_unit_matrix[, 5] * dunit_b_unit_matrix[, 5],
-				dunit_a_unit_matrix[, 3] * dunit_b_unit_matrix[, 3] +
-					dunit_a_unit_matrix[, 4] * dunit_b_unit_matrix[, 4]
-			)
-			a_overall_matrix <- blend_vec * a_overall_matrix_dir +
-				(1 - blend_vec) * matrix(rep(c(1 / 5, 2 / 5, 2 / 5), each = nrow(dunit_a_matrix)), nrow = nrow(dunit_a_matrix))
-			colnames(a_overall_matrix) <- paste0("overall", 1:3)
-			lambda_overall_vec <- c(
-				overall1 = -3 * (dx + dy),
+	if (abs(dx - dy) <= tol * max(1, abs(dx), abs(dy))) {
+		a_overall_matrix_dir <- cbind(
+			dunit_a_unit_matrix[, 1] * dunit_b_unit_matrix[, 1],
+			dunit_a_unit_matrix[, 2] * dunit_b_unit_matrix[, 2] +
+				dunit_a_unit_matrix[, 5] * dunit_b_unit_matrix[, 5],
+			dunit_a_unit_matrix[, 3] * dunit_b_unit_matrix[, 3] +
+				dunit_a_unit_matrix[, 4] * dunit_b_unit_matrix[, 4]
+		)
+		a_overall_matrix <- blend_vec * a_overall_matrix_dir +
+			(1 - blend_vec) * matrix(rep(c(1 / 5, 2 / 5, 2 / 5), each = nrow(dunit_a_matrix)), nrow = nrow(dunit_a_matrix))
+		colnames(a_overall_matrix) <- paste0("overall", 1:3)
+		lambda_overall_vec <- c(
+			overall1 = -3 * (dx + dy),
 			overall2 = -(2 * dx + 4 * dz),
 			overall3 = -(5 * dx + dz)
 		)

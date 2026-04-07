@@ -9,7 +9,7 @@ spec_den_term_array_list_to_atom_relax_df(spec_den_term_array_list)
 \arguments{
 \item{spec_den_term_array_list}{named list of per-rate spectral-density term
 arrays, or named list of lists containing \code{spec_den_term_array} and
-optional \code{value}}
+optional \code{value} and \code{k}}
 }
 \value{
 Data frame combining all rate blocks side by side using the atom-
@@ -24,15 +24,17 @@ Each element of \code{spec_den_term_array_list} must be named by the desired
 rate name and must either be:
 \itemize{
 \item a spectral-density term array \verb{(pairs, terms, 2)}, or
-\item a list with elements \code{spec_den_term_array} and optional \code{value}
+\item a list with elements \code{spec_den_term_array} and optional \code{value} and
+\code{k}
 }
-In the second form, \code{value} is written to the corresponding
-\code{"<rate_name>_value"} column.
+In the second form, \code{value} and \code{k} are written to the corresponding
+\code{"<rate_name>_value"} and \code{"<rate_name>_k"} columns.
 }
 \examples{
 spec_den_term_array_list <- list(
   r1 = list(
     value = c(1.0, 2.0),
+    k = c(4.0, 9.0),
     spec_den_term_array = array(
       c(0.1, 0.2, 0, 0),
       dim = c(2, 1, 2),

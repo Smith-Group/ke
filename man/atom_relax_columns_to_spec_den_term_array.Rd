@@ -17,6 +17,8 @@ A list with elements:
 \describe{
 \item{\code{value}}{numeric vector from the \code{"<rate_name>_value"} column, or
 \code{NULL} if that column is absent}
+\item{\code{k}}{numeric vector from the \code{"<rate_name>_k"} column, or \code{NULL}
+if that column is absent}
 \item{\code{spec_den_term_array}}{numeric array \verb{(pairs, terms, 2)} with
 second-dimension names taken from \verb{<freq_name>} and third-dimension
 names \code{c("coef", "freq")}}
@@ -29,9 +31,9 @@ Reconstruct a per-rate spectral-density term array from columns in an
 \details{
 The expected column naming convention is
 \code{"<rate_name>_<freq_name>_<component>"}, where \verb{<component>} is either
-\code{"coef"} or \code{"freq"}. If present, the special column
-\code{"<rate_name>_value"} stores the target relaxation value associated with
-that rate block.
+\code{"coef"} or \code{"freq"}. If present, the special columns
+\code{"<rate_name>_value"} and \code{"<rate_name>_k"} store the target relaxation
+values and optional loss weights associated with that rate block.
 
 Parsing is anchored to the supplied \code{rate_name}, so the rate name itself may
 contain underscores. The \code{freq_name} portion must not contain underscores.
@@ -40,6 +42,7 @@ For each \code{freq_name}, both \code{coef} and \code{freq} columns must be pres
 \examples{
 atom_relax_df <- data.frame(
   r1_value = c(1.0, 2.0),
+  r1_k = c(4.0, 9.0),
   r1_0_coef = c(0.1, 0.2),
   r1_0_freq = c(0, 0),
   r1_2wH_coef = c(0.3, 0.4),

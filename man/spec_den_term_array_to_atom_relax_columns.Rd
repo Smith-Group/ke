@@ -7,7 +7,8 @@
 spec_den_term_array_to_atom_relax_columns(
   spec_den_term_array,
   rate_name,
-  value = NULL
+  value = NULL,
+  k = NULL
 )
 }
 \arguments{
@@ -18,11 +19,15 @@ spec_den_term_array_to_atom_relax_columns(
 \item{value}{optional numeric vector of length \code{dim(spec_den_term_array)[1]}
 to store in the \code{"<rate_name>_value"} column. If \code{NULL}, the value column
 is omitted.}
+
+\item{k}{optional numeric vector of length \code{1} or
+\code{dim(spec_den_term_array)[1]} to store in the \code{"<rate_name>_k"} column.
+If \code{NULL}, the k column is omitted.}
 }
 \value{
-A data frame containing one \code{"<rate_name>_value"} column, if
-requested, plus one \code{coef} and one \code{freq} column for each term in
-\code{spec_den_term_array}.
+A data frame containing optional \code{"<rate_name>_value"} and
+\code{"<rate_name>_k"} columns, plus one \code{coef} and one \code{freq} column for each
+term in \code{spec_den_term_array}.
 }
 \description{
 Flatten a per-rate spectral-density term array into columns suitable for an
@@ -31,8 +36,9 @@ Flatten a per-rate spectral-density term array into columns suitable for an
 \details{
 Output columns follow the naming convention
 \code{"<rate_name>_<freq_name>_<component>"}, where \verb{<component>} is either
-\code{"coef"} or \code{"freq"}. If \code{value} is supplied, the additional
-\code{"<rate_name>_value"} column stores the target relaxation values.
+\code{"coef"} or \code{"freq"}. If \code{value} or \code{k} is supplied, the additional
+\code{"<rate_name>_value"} and \code{"<rate_name>_k"} columns store the target
+relaxation values and optional loss weights.
 
 The second dimension of \code{spec_den_term_array} supplies \verb{<freq_name>} through
 its dimnames. The third dimension must have length two and corresponds to the
@@ -49,7 +55,8 @@ spec_den_term_array <- array(
 spec_den_term_array_to_atom_relax_columns(
   spec_den_term_array = spec_den_term_array,
   rate_name = "r1",
-  value = c(1.0, 2.0)
+  value = c(1.0, 2.0),
+  k = c(4.0, 9.0)
 )
 
 }

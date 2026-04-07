@@ -12,7 +12,7 @@ atom_relax_df_to_spec_den_term_array_list(atom_relax_df)
 \value{
 Named list whose elements are the return values of
 \code{\link[=atom_relax_columns_to_spec_den_term_array]{atom_relax_columns_to_spec_den_term_array()}}. Each element is itself a
-list with entries \code{value} and \code{spec_den_term_array}.
+list with entries \code{value}, optional \code{k}, and \code{spec_den_term_array}.
 }
 \description{
 Reconstruct all rate blocks in an \verb{*_atom_relax.csv}-style data frame as a
@@ -21,13 +21,14 @@ values and the corresponding spectral-density term array for one rate.
 }
 \details{
 Rate names are discovered automatically from columns ending in \verb{_value},
-\verb{_coef}, or \verb{_freq}. Parsing proceeds from the right, so rate names may
-contain underscores. Term-frequency names must not contain underscores and
-must be paired as \verb{<freq_name>_coef} and \verb{<freq_name>_freq}.
+\verb{_k}, \verb{_coef}, or \verb{_freq}. Parsing proceeds from the right, so rate names
+may contain underscores. Term-frequency names must not contain underscores
+and must be paired as \verb{<freq_name>_coef} and \verb{<freq_name>_freq}.
 }
 \examples{
 atom_relax_df <- data.frame(
   r1_value = c(1.0, 2.0),
+  r1_k = c(4.0, 9.0),
   r1_0_coef = c(0.1, 0.2),
   r1_0_freq = c(0, 0),
   r2_0_coef = c(0.3, 0.4),

@@ -286,14 +286,91 @@ spec_den_relax_data <- make_spec_den_relax_data(
 str(spec_den_relax_data, max.level = 2)
 ```
 
+# Writing Spectral Density Relaxation Data
+
+The `spec_den_relax_data` object can also be written to disk as a set of CSV
+files. This is useful when preparing an analysis outside the current R session,
+or when inspecting the exact inputs that [read_spec_den_relax_data()] expects to
+reconstruct.
+
+```{r}
+relax_prefix <- file.path(tempdir(), "gb3_15n")
+write_spec_den_relax_data(spec_den_relax_data, relax_prefix)
+
+relax_files <- list.files(
+  tempdir(),
+  pattern = "^gb3_15n_(atom_relax|groupings|a_coef|lambda_coef)\\.csv$",
+  full.names = TRUE
+)
+
+basename(relax_files)
+```
+
+The `*_atom_relax.csv` file stores the atom-pair identifiers together with the
+flattened relaxation-rate definitions. Each rate contributes optional `value`
+and `k` columns, followed by one `coef` and one `freq` column for each
+spectral-density term. To keep the example compact, the table below shows the
+first relaxation-rate block, `r1_400`, for a small subset of residues.
+
+```{r}
+atom_relax_csv <- read.csv(paste0(relax_prefix, "_atom_relax.csv"), check.names = FALSE)
+first_rate <- names(spec_den_relax_data$relax_data_list)[[1]]
+first_rate_cols <- grep(paste0("^", first_rate, "_"), names(atom_relax_csv), value = TRUE)
+
+atom_relax_subset <- atom_relax_csv[
+  seq_len(6),
+  c(names(atom_relax_csv)[1:2], first_rate_cols),
+  drop = FALSE
+]
+
+knitr::kable(atom_relax_subset[, 1:6, drop = FALSE], digits = 3)
+knitr::kable(atom_relax_subset[, 7:10, drop = FALSE], digits = 3)
+```
+
+The `*_groupings.csv` file encodes how internal kinetic modes are grouped for
+dipole-dipole interaction tensor averaging. Each row corresponds to one
+grouping pattern used later when constructing the relaxation calculation.
+
+```{r}
+groupings_csv <- as.matrix(
+  read.csv(paste0(relax_prefix, "_groupings.csv"), header = FALSE)
+)
+
+knitr::kable(groupings_csv, col.names = NULL)
+```
+
+The `*_a_coef.csv` file stores the coefficients used to build the internal-mode
+amplitudes from the supplied kinetic model. Its columns correspond to the base
+rate constants, and its rows correspond to grouped internal amplitudes.
+
+```{r}
+a_coef_csv <- read.csv(paste0(relax_prefix, "_a_coef.csv"), check.names = FALSE)
+
+knitr::kable(a_coef_csv, digits = 3)
+```
+
+Finally, the `*_lambda_coef.csv` file stores the coefficients used to assemble
+the internal decay rates. These coefficients are combined with the named base
+rates to produce the internal eigenvalues used in the spectral-density sums.
+
+```{r}
+lambda_coef_csv <- read.csv(
+  paste0(relax_prefix, "_lambda_coef.csv"),
+  check.names = FALSE,
+  row.names = 1
+)
+
+knitr::kable(lambda_coef_csv, digits = 3)
+```
+
+# Fiting *k*<sub>ens</sub> and *D*<sub>iso</sub>
+
 Because `atom_relax_data` stores one force constant per relaxation rate, the
 same setup can also be used in a simple numerical fit. The example below uses
 [optim()] to refine the ensemble exchange rate `kens` and an isotropic
 rotational diffusion constant `Diso` by minimizing the weighted quadratic loss
 returned by [coord_array_to_relax_energy()]. The optimization is carried out on
 the log scale so that both fitted parameters remain positive.
-
-# Fiting *k*<sub>ens</sub> and *D*<sub>iso</sub>
 
 ```{r}
 coord_array_opt <- aperm(subset_coord, c(2, 1, 3))

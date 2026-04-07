@@ -1,12 +1,13 @@
 library(ke)
 
-pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only = TRUE)
+pdb_path <- system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke")
+pdb2lum <- read_ensemble(pdb_path, proton_only = TRUE)
 
 # coordinates against which derivatives will be calculated
-coord_array <- pdb2lum[,,1:3]
+coord_array <- pdb2lum[, , c(1, 3, 5)]
 
 # coordinates for creating synthetic cross-relaxation rates
-coord_synthetic <- pdb2lum[,,4:6]
+coord_synthetic <- pdb2lum[, , c(2, 4, 6)]
 
 # ensemble member interconversion eigenvalue
 base_rates <- c(kens = 1/2e-9)

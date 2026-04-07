@@ -1455,6 +1455,79 @@ make_sigma_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "1H"
 	)
 }
 
+#' Convert steady-state NOE values to sigma cross-relaxation rates
+#'
+#' For observed nucleus \eqn{X}, the steady-state heteronuclear NOE is related
+#' to the dipolar cross-relaxation rate \eqn{\sigma_{HX}} through
+#' \deqn{
+#' \mathrm{NOE} = 1 + \frac{\gamma_H}{\gamma_X} \frac{\sigma_{HX}}{R_1}.
+#' }
+#' This function rearranges that relation to evaluate
+#' \deqn{
+#' \sigma_{HX} = (\mathrm{NOE} - 1) R_1 \frac{\gamma_X}{\gamma_H}.
+#' }
+#'
+#' When `dnoe` and `dr1` are supplied, the uncertainty in `sigma` is propagated
+#' under the assumption that the NOE and \eqn{R_1} uncertainties are
+#' independent:
+#' \deqn{
+#' d\sigma =
+#' \sqrt{
+#' \left[(\mathrm{NOE} - 1)\frac{\gamma_X}{\gamma_H} dR_1\right]^2 +
+#' \left[R_1 \frac{\gamma_X}{\gamma_H} d\mathrm{NOE}\right]^2
+#' }.
+#' }
+#'
+#' The returned numeric matrix always contains a `sigma` column and includes
+#' `sigma_err` when both `dnoe` and `dr1` are supplied.
+#'
+#' @param noe Numeric vector of steady-state heteronuclear NOE values
+#' @param r1 Numeric vector of longitudinal relaxation rates corresponding to
+#'   `noe`
+#' @param dnoe Optional numeric vector of NOE uncertainties
+#' @param dr1 Optional numeric vector of \eqn{R_1} uncertainties
+#' @param nucleus_x Character scalar observed nucleus identifier such as
+#'   `"15N"` or `"13C"`
+#'
+#' @return Numeric matrix with column `sigma`, and optional column `sigma_err`
+#'   when both error vectors are supplied
+#'
+#' @export
+noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
+	stopifnot(
+		is.numeric(noe),
+		is.numeric(r1),
+		length(noe) == length(r1),
+		is.character(nucleus_x),
+		length(nucleus_x) == 1
+	)
+	if (xor(is.null(dnoe), is.null(dr1))) {
+		stop("`dnoe` and `dr1` must either both be supplied or both be `NULL`")
+	}
+	if (!is.null(dnoe)) {
+		stopifnot(
+			is.numeric(dnoe),
+			is.numeric(dr1),
+			length(dnoe) == length(noe),
+			length(dr1) == length(r1)
+		)
+	}
+
+	gamma_ratio <- .nucleus_gamma(nucleus_x) / .nucleus_gamma("1H")
+	sigma <- (noe - 1) * r1 * gamma_ratio
+
+	out <- matrix(sigma, ncol = 1, dimnames = list(NULL, "sigma"))
+	if (!is.null(dnoe)) {
+		sigma_err <- sqrt(
+			(((noe - 1) * gamma_ratio * dr1) ^ 2) +
+			((r1 * gamma_ratio * dnoe) ^ 2)
+		)
+		out <- cbind(out, sigma_err = sigma_err)
+	}
+
+	out
+}
+
 #' Normalize permutation-rate metadata for spectral-density relaxation input
 #'
 #' This helper validates a length-two `perm_rates` specification. Missing

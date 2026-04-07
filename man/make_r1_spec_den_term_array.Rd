@@ -63,7 +63,7 @@ d_{IS}^2 =
 and
 \deqn{
 c_I^2 =
-\frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+\frac{2}{15}\omega_I^2 \Delta\sigma_I^2.
 }
 Here \eqn{\Delta\sigma_I} is the CSA anisotropy of the observed spin in
 fractional units, obtained from \code{delta_sigma_ppm}.
@@ -93,7 +93,7 @@ axially symmetric CSA tensor (\eqn{\eta = 0}) his Eq. (141) can be written
 in the present notation as
 \deqn{R_1^{CSA} = c_I^2 J(\omega_I)}
 with the identification
-\deqn{c_I^2 = \omega_I^2 \Delta\sigma_I^2 / 3.}
+\deqn{c_I^2 = (2/15)\omega_I^2 \Delta\sigma_I^2.}
 The present function then adds this CSA contribution to the dipolar result.
 
 This function uses a single spectral density function for both DD and CSA

@@ -143,7 +143,7 @@
 #' \eqn{\Delta\sigma_I}, this helper evaluates
 #' \deqn{
 #' c_I^2 =
-#' \frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+#' \frac{2}{15}\omega_I^2 \Delta\sigma_I^2.
 #' }
 #' Here `delta_sigma_ppm` is converted to fractional units via
 #' \deqn{\Delta\sigma_I = \texttt{delta\_sigma\_ppm} \times 10^{-6}.}
@@ -158,5 +158,5 @@
 .csa_prefactor_sq <- function(proton_mhz, nucleus, delta_sigma_ppm) {
 	omega <- .larmor_omega(proton_mhz, nucleus)
 	delta_sigma <- delta_sigma_ppm * 1e-6
-	omega^2 * delta_sigma^2 / 3
+	(2 / 15) * omega^2 * delta_sigma^2
 }

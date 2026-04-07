@@ -1081,7 +1081,7 @@ make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, s
 #' and
 #' \deqn{
 #' c_I^2 =
-#' \frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+#' \frac{2}{15}\omega_I^2 \Delta\sigma_I^2.
 #' }
 #' Here \eqn{\Delta\sigma_I} is the CSA anisotropy of the observed spin in
 #' fractional units, obtained from `delta_sigma_ppm`.
@@ -1111,7 +1111,7 @@ make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, s
 #' in the present notation as
 #' \deqn{R_1^{CSA} = c_I^2 J(\omega_I)}
 #' with the identification
-#' \deqn{c_I^2 = \omega_I^2 \Delta\sigma_I^2 / 3.}
+#' \deqn{c_I^2 = (2/15)\omega_I^2 \Delta\sigma_I^2.}
 #' The present function then adds this CSA contribution to the dipolar result.
 #'
 #' This function uses a single spectral density function for both DD and CSA
@@ -1225,7 +1225,7 @@ make_r1_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "15N", 
 #' and
 #' \deqn{
 #' c_I^2 =
-#' \frac{\omega_I^2 \Delta\sigma_I^2}{3}.
+#' \frac{2}{15}\omega_I^2 \Delta\sigma_I^2.
 #' }
 #' Here \eqn{\Delta\sigma_I} is the CSA anisotropy of the observed spin in
 #' fractional units, obtained from `delta_sigma_ppm`.
@@ -1257,7 +1257,7 @@ make_r1_spec_den_term_array <- function(n_pairs, proton_mhz, nucleus_i = "15N", 
 #' R_2^{CSA} = \frac{1}{6} c_I^2 \left[4J(0) + 3J(\omega_I)\right]
 #' }
 #' with the identification
-#' \deqn{c_I^2 = \omega_I^2 \Delta\sigma_I^2 / 3.}
+#' \deqn{c_I^2 = (2/15)\omega_I^2 \Delta\sigma_I^2.}
 #' The function then adds this CSA contribution to the dipolar result.
 #'
 #' This function uses a single spectral density function for both DD and CSA

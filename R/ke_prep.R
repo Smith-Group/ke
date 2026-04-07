@@ -1893,6 +1893,18 @@ make_spec_den_relax_data <- function(atom_relax_data, base_rate_mat, base_rates,
 				" rows in its first dimension, matching the number of relaxation-rates"
 			)
 		}
+		if ("k" %in% names(rate_obj)) {
+			if (!is.numeric(rate_obj[["k"]])) {
+				stop("`relax_data_list[['", rate_name, "']][['k']]` must be numeric when supplied")
+			}
+			if (!length(rate_obj[["k"]]) %in% c(1, block_info[["n_relax_rates"]])) {
+				stop(
+					"`relax_data_list[['", rate_name, "']][['k']]` must have length 1 or ",
+					block_info[["n_relax_rates"]],
+					", matching the number of relaxation-rates"
+				)
+			}
+		}
 	}
 
 	expected_has_perm <- block_info[["inferred_multiplicity"]] > 1L

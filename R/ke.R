@@ -1511,6 +1511,26 @@ g_to_energy <- function(g, g0, k=1, gradient=FALSE) {
     value
 }
 
+#' Quadratic loss function
+#'
+#' @param x current values
+#' @param x0 target values
+#' @param k force constant
+#' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return \deqn{k(x - x_0)^2}
+#'
+#' @export
+quadratic_loss <- function(x, x0, k = 1, gradient = FALSE) {
+
+	expr1 <- x - x0
+	value <- k * expr1^2
+	if (gradient) {
+		attr(value, "gradient") <- k * (2 * expr1)
+	}
+	value
+}
+
 #' Scale real or back calculated values towards zero by taking a power
 #'
 #' @param x numerical values to be rescaled
@@ -2397,7 +2417,11 @@ coord_array_to_relax <- function(coord_array, rates, spec_den_relax_data_list) {
 #' @param rates named numeric vector with ensemble rates
 #' @param spec_den_relax_data_list list of data for calculating relaxation rates
 #' @param loss_func loss function to use
-#' @param ... additional parameters passed to `loss_func`
+#' @param ... additional parameters passed to `loss_func`. If a `k` argument is
+#'   not supplied here, `coord_array_to_relax_energy()` looks for an optional
+#'   numeric `k` field in each `relax_data_list` entry and uses those values as
+#'   per-relaxation-rate force constants. Each such `k` may have length 1 or
+#'   the number of relaxation rates in that entry.
 #' @param gradient a logical value indicating whether to calculate the derivative
 #'
 #' @return total restraint energy calculated using `loss_func`
@@ -2484,8 +2508,36 @@ coord_array_to_relax_energy <- function(coord_array, rates, spec_den_relax_data_
 		use.names = FALSE
 	)
 
+	# combine optional force constants into a single vector
+	k_vector <- unlist(
+		lapply(spec_den_relax_data_list, function(spec_den_relax_data) {
+			unlist(
+				lapply(spec_den_relax_data[["relax_data_list"]], function(relax_entry) {
+					n_value <- length(relax_entry[["value"]])
+					if (!"k" %in% names(relax_entry)) {
+						rep(1, n_value)
+					} else if (length(relax_entry[["k"]]) == 1) {
+						rep(relax_entry[["k"]], n_value)
+					} else {
+						relax_entry[["k"]]
+					}
+				}),
+				use.names = FALSE
+			)
+		}),
+		use.names = FALSE
+	)
+
+	loss_args <- list(...)
+	if (!"k" %in% names(loss_args)) {
+		loss_args$k <- k_vector
+	}
+	loss_args$x <- relax_vector
+	loss_args$x0 <- relax0_vector
+	loss_args$gradient <- gradient
+
 	# calculate energies from the relaxation-rate vectors
-	energy_vector <- loss_func(relax_vector, relax0_vector, ..., gradient = gradient)
+	energy_vector <- do.call(loss_func, loss_args)
 
 	# return the sum of all the individual restraint energies
 	value <- sum(energy_vector)

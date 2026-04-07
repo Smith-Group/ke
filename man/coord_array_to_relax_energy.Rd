@@ -22,7 +22,11 @@ coord_array_to_relax_energy(
 
 \item{loss_func}{loss function to use}
 
-\item{...}{additional parameters passed to \code{loss_func}}
+\item{...}{additional parameters passed to \code{loss_func}. If a \code{k} argument is
+not supplied here, \code{coord_array_to_relax_energy()} looks for an optional
+numeric \code{k} field in each \code{relax_data_list} entry and uses those values as
+per-relaxation-rate force constants. Each such \code{k} may have length 1 or
+the number of relaxation rates in that entry.}
 
 \item{gradient}{a logical value indicating whether to calculate the derivative}
 }

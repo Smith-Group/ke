@@ -1398,15 +1398,13 @@ dxyz_dunit_to_overall_modes <- function(dxyz_vec, dunit_a_array, dunit_b_array =
 #' where \eqn{t} indexes the supplied spectral density terms, with coefficients
 #' \eqn{c_{pt}} and frequencies \eqn{\omega_{pt}} from `spec_den_term_array`.
 #' The spectral density is calculated as
-#' \deqn{J_p(\omega) = -2 \sum_i \sum_j
+#' \deqn{J_p(\omega) = -\sum_i \sum_j
 #' a^{\mathrm{int}}_{pj} a^{\mathrm{overall}}_{pi}
 #' \frac{\lambda^{\prime}_{ij}}{(\lambda^{\prime}_{ij})^2 + \omega^2}}
 #' with combined decay rates
-#' \deqn{\lambda^{\prime}_{ij} = \lambda^{\mathrm{int}}_j - \lambda^{\mathrm{overall}}_i.}
-#' In the spectral density summation, the factor of 2 comes from integrating
-#' an equilibrium time-correlation function over both positive and negative
-#' time lags, and the minus sign reflects the use of negative decay
-#' eigenvalues.
+#' \deqn{\lambda^{\prime}_{ij} = \lambda^{\mathrm{int}}_j + \lambda^{\mathrm{overall}}_i.}
+#' In the spectral density summation, the minus sign reflects the use of
+#' negative decay eigenvalues.
 #'
 #' @param a_int_matrix (pairs, eigenvalues) matrix of internal motion amplitudes
 #' @param lambda_int_vec internal motion eigenvalues associated with a_int_matrix columns
@@ -1432,7 +1430,9 @@ a_matrix_to_relax <- function(a_int_matrix, lambda_int_vec, a_overall_matrix, la
 		ncol(a_overall_matrix) == length(lambda_overall_vec),
 		nrow(a_int_matrix) == nrow(a_overall_matrix),
 		dim(spec_den_term_array)[1] == nrow(a_int_matrix),
-		dim(spec_den_term_array)[3] == 2
+		dim(spec_den_term_array)[3] == 2,
+		lambda_int_vec <= 0,
+		lambda_overall_vec <= 0
 	)
 
 	spec_den_coef_matrix <- spec_den_term_array[, , 1, drop = FALSE]
@@ -1445,11 +1445,11 @@ a_matrix_to_relax <- function(a_int_matrix, lambda_int_vec, a_overall_matrix, la
 	}
 
 	for (i in seq_along(lambda_overall_vec)) {
-		lambda_prime_vec <- lambda_int_vec - lambda_overall_vec[i]
+		lambda_prime_vec <- lambda_int_vec + lambda_overall_vec[i]
 		for (j in seq_along(lambda_prime_vec)) {
 			term_vec <- rowSums(
 				spec_den_coef_matrix * (
-					-2 * a_overall_matrix[, i] * lambda_prime_vec[j] /
+					-a_overall_matrix[, i] * lambda_prime_vec[j] /
 						(lambda_prime_vec[j]^2 + spec_den_freq_matrix^2)
 				)
 			)

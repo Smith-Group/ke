@@ -42,15 +42,13 @@ For pair \eqn{p}, this function evaluates
 where \eqn{t} indexes the supplied spectral density terms, with coefficients
 \eqn{c_{pt}} and frequencies \eqn{\omega_{pt}} from \code{spec_den_term_array}.
 The spectral density is calculated as
-\deqn{J_p(\omega) = -2 \sum_i \sum_j
+\deqn{J_p(\omega) = -\sum_i \sum_j
 a^{\mathrm{int}}_{pj} a^{\mathrm{overall}}_{pi}
 \frac{\lambda^{\prime}_{ij}}{(\lambda^{\prime}_{ij})^2 + \omega^2}}
 with combined decay rates
-\deqn{\lambda^{\prime}_{ij} = \lambda^{\mathrm{int}}_j - \lambda^{\mathrm{overall}}_i.}
-In the spectral density summation, the factor of 2 comes from integrating
-an equilibrium time-correlation function over both positive and negative
-time lags, and the minus sign reflects the use of negative decay
-eigenvalues.
+\deqn{\lambda^{\prime}_{ij} = \lambda^{\mathrm{int}}_j + \lambda^{\mathrm{overall}}_i.}
+In the spectral density summation, the minus sign reflects the use of
+negative decay eigenvalues.
 }
 \seealso{
 \code{\link[=a_matrix_to_relax_backprop]{a_matrix_to_relax_backprop()}}

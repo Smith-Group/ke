@@ -11,6 +11,10 @@ unique_atom_map(permutation)
 
 This is useful for calculating interactions between a permutation group and other atoms}
 }
+\value{
+Character matrix of unique atom assignments, with one row per atom and
+one column per distinct assignment within the permutation group.
+}
 \description{
 Generate matrix of possible permuted assignments to individual atoms in a group
 }

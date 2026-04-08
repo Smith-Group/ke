@@ -12,6 +12,10 @@ make_atom_perm_list(atomids, atom_permutations)
 \item{atom_permutations}{list of permutations from \code{find_methyl_permutations()} and
 \code{find_aromatic_permutations()}}
 }
+\value{
+List of integer matrices giving, for each supported multiplicity, the
+atom index assignments under the supplied permutations.
+}
 \description{
 Create list of matrices for doing two or three atom permutations
 }

@@ -14,6 +14,10 @@ coord_atomnames(coord) <- value
 
 \item{value}{character vector with four characters per element}
 }
+\value{
+Getter: character vector of four-character atom names. Setter:
+modified \code{coord} with updated atom names.
+}
 \description{
 Get or set four-character atom names
 }

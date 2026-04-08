@@ -11,6 +11,10 @@ expand_subset_mat(rate_subset_mat, permutation_counts)
 
 \item{permutation_counts}{vector with counts of states and names giving the rate}
 }
+\value{
+Numeric matrix expanding \code{rate_subset_mat} to the larger state space
+implied by the permutation counts.
+}
 \description{
 Expand subset matrix consistent with applying Kronecker product to original rate matrix
 }

@@ -9,6 +9,10 @@ rate_mat_diag(rate_mat)
 \arguments{
 \item{rate_mat}{square transition rate matrix}
 }
+\value{
+Transition rate matrix with each diagonal entry replaced by the
+negative sum of its off-diagonal row entries.
+}
 \description{
 Update transition rate diagonal using rates
 }

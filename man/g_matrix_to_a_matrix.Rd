@@ -11,6 +11,10 @@ g_matrix_to_a_matrix(g_matrix, a_coef)
 
 \item{a_coef}{coefficients used for calculating a values}
 }
+\value{
+Numeric matrix of \code{a} values with one row per atom pair and one
+column per eigenvalue combination in \code{a_coef}.
+}
 \description{
 Calculate matrix of a values from a matrix of g values
 }

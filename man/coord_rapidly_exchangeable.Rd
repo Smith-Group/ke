@@ -11,6 +11,10 @@ coord_rapidly_exchangeable(coord, amber = FALSE)
 
 \item{amber}{logical indicating whether atom names are from AMBER force field}
 }
+\value{
+Logical vector with one value per atom identifier in \code{coord},
+indicating whether the proton is treated as rapidly exchangeable.
+}
 \description{
 Determine whether an atom is rapidly exchangeable at neutral pH
 }

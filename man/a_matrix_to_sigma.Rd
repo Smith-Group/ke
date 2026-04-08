@@ -15,6 +15,11 @@ a_matrix_to_sigma(a_matrix, lambda_prime_vec, proton_mhz, gradient = FALSE)
 
 \item{gradient}{a logical value indicating whether to calculate the derivative}
 }
+\value{
+Numeric vector of sigma rates, one per row of \code{a_matrix}. If
+\code{gradient = TRUE}, the \code{"gradient"} attribute is a matrix of derivatives
+with respect to \code{a_matrix}.
+}
 \description{
 Calculate sigma from a matrix of a values
 }

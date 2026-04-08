@@ -9,6 +9,9 @@ pdb_traj_close(traj_data)
 \arguments{
 \item{traj_data}{list structure with data necessary for reads}
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Close a PDB trajectory file
 }

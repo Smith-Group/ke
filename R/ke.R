@@ -1,5 +1,8 @@
 #' Convert between one and three letter residue names 
 #'
+#' @return Named character vector mapping one-letter and three-letter amino-acid
+#'   residue codes.
+#'
 #' @docType data
 #' @rdname residue_names
 #' @examples
@@ -26,6 +29,9 @@ amber_atomres <-  c(" H   ALA", " HA  ALA", " HB1 ALA", " HB2 ALA", " HB3 ALA", 
 charmm_atomres <- c(" HN  ALA", " HA  ALA", " HB1 ALA", " HB2 ALA", " HB3 ALA", " HN  ARG", " HA  ARG", " HB1 ARG", " HB2 ARG", " HD1 ARG", " HD2 ARG", " HE  ARG", " HG1 ARG", " HG2 ARG", "HH11 ARG", "HH12 ARG", "HH21 ARG", "HH22 ARG", " HN  ASN", " HA  ASN", " HB1 ASN", " HB2 ASN", "HD21 ASN", "HD22 ASN", " HN  ASP", " HA  ASP", " HB1 ASP", " HB2 ASP", " HN  CYS", " HA  CYS", " HB1 CYS", " HB2 CYS", " HG1 CYS", " HN  GLN", " HA  GLN", " HB1 GLN", " HB2 GLN", " HG1 GLN", " HG2 GLN", "HE21 GLN", "HE22 GLN", " HN  GLU", " HA  GLU", " HB1 GLU", " HB2 GLU", " HG1 GLU", " HG2 GLU", " HN  GLY", " HA1 GLY", " HA2 GLY", " HN  HSP", " HA  HSP", " HB1 HSP", " HB2 HSP", " HD1 HSP", " HD2 HSP", " HE1 HSP", " HE2 HSP", " HN  ILE", " HA  ILE", " HB  ILE", " CD  ILE", " HD1 ILE", " HD2 ILE", " HD3 ILE", "HG11 ILE", "HG12 ILE", "HG21 ILE", "HG22 ILE", "HG23 ILE", " HN  LEU", " HA  LEU", " HB1 LEU", " HB2 LEU", " HG  LEU", "HD11 LEU", "HD12 LEU", "HD13 LEU", "HD21 LEU", "HD22 LEU", "HD23 LEU", " HN  LYS", " HA  LYS", " HB1 LYS", " HB2 LYS", " HD1 LYS", " HD2 LYS", " HE1 LYS", " HE2 LYS", " HG1 LYS", " HG2 LYS", " HZ1 LYS", " HZ2 LYS", " HZ3 LYS", " HT1 MET", " HT2 MET", " HT3 MET", " HA  MET", " HB1 MET", " HB2 MET", " HE1 MET", " HE2 MET", " HE3 MET", " HG1 MET", " HG2 MET", " HN  PHE", " HA  PHE", " HB1 PHE", " HB2 PHE", " HD1 PHE", " HD2 PHE", " HE1 PHE", " HE2 PHE", " HZ  PHE", " HA  PRO", " HB1 PRO", " HB2 PRO", " HD1 PRO", " HD2 PRO", " HG1 PRO", " HG2 PRO", " HN  SER", " HA  SER", " HB1 SER", " HB2 SER", " HG1 SER", " HN  THR", " HA  THR", " HB  THR", " HG1 THR", "HG21 THR", "HG22 THR", "HG23 THR", " HN  TRP", " HA  TRP", " HB1 TRP", " HB2 TRP", " HD1 TRP", " HE1 TRP", " HE3 TRP", " HZ2 TRP", " HZ3 TRP", " HH2 TRP", " HN  TYR", " HA  TYR", " HB1 TYR", " HB2 TYR", " HD1 TYR", " HD2 TYR", " HE1 TYR", " HE2 TYR", " HH  TYR", " HN  VAL", " HA  VAL", " HB  VAL", "HG11 VAL", "HG12 VAL", "HG13 VAL", "HG21 VAL", "HG22 VAL", "HG23 VAL")
 
 #' Convert between proton atom/residue name pairs
+#'
+#' @return Named character vector mapping atom/residue identifiers between naming
+#'   conventions.
 #'
 #' @rdname atom_residue_names
 #' @export
@@ -106,6 +112,9 @@ coord_to_atom_lines <- function(coord) {
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
 #'
+#' @return Getter: character vector of four-character atom names. Setter:
+#'   modified `coord` with updated atom names.
+#'
 #' @rdname coord_atomnames
 #' @export
 coord_atomnames <- function(coord) {
@@ -142,6 +151,9 @@ coord_atomnames <- function(coord) {
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB res records
 #'
+#' @return Getter: character vector of three-letter residue names. Setter:
+#'   modified `coord` with updated residue names.
+#'
 #' @rdname coord_resnames
 #' @export
 coord_resnames <- function(coord) {
@@ -165,6 +177,9 @@ coord_resnames <- function(coord) {
 #' Get or set atom/residue name pairs
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @return Getter: character vector of atom/residue identifiers. Setter:
+#'   modified `coord` with updated atom/residue identifiers.
 #'
 #' @rdname coord_atomresnames
 #' @export
@@ -193,6 +208,9 @@ coord_atomresnames <- function(coord) {
 #' Get or set residue sequence number
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
+#'
+#' @return Getter: integer vector of residue sequence numbers. Setter:
+#'   modified `coord` with updated residue sequence numbers.
 #'
 #' @rdname coord_resseq
 #' @export
@@ -231,6 +249,9 @@ coord_resseq <- function(coord) {
 #'
 #' @param coord matrix or array with second dimension having columns 13 to 27 of the PDB ATOM records
 #' @param amber logical indicating whether atom names are from AMBER force field
+#'
+#' @return Logical vector with one value per atom identifier in `coord`,
+#'   indicating whether the proton is treated as rapidly exchangeable.
 #'
 #' @export
 coord_rapidly_exchangeable <- function(coord, amber=FALSE) {
@@ -272,6 +293,10 @@ coord_rapidly_exchangeable <- function(coord, amber=FALSE) {
 #' @param pdb_files character vector paths to PDB format file(s)
 #' @param model_idx vector with indices of models to read
 #' @param proton_only logical indicating whether to only read hydrogen ATOM records
+#'
+#' @return Numeric coordinate array. For a single input file the dimensions are
+#'   `(xyz, atoms, models)`; for multiple input files an additional trailing file
+#'   dimension is retained.
 #'
 #' @export
 read_ensemble <- function(pdb_files, model_idx=NULL, proton_only=FALSE) {
@@ -472,6 +497,9 @@ bond_separation <- function(coord_mat, depth=4) {
 #' @param arr two or three dimensional array with the first two dimensions having the same length
 #' @param idx_list list of character or integer indices to accumulate using func
 #' @param func function to apply
+#'
+#' @return Matrix or array with the first two dimensions collapsed according to
+#'   `idx_list`, preserving any trailing dimensions.
 #'
 #' @export
 collapse_array <- function(arr, idx_list, func=`+`) {
@@ -872,6 +900,9 @@ d_array_to_g_matrix_backprop <- function(d_g_matrix_d_d_array, d_energy_d_g_matr
 #'
 #' @param g_matrix matrix of g values with columns associated with different groupings
 #' @param a_coef coefficients used for calculating a values
+#'
+#' @return Numeric matrix of `a` values with one row per atom pair and one
+#'   column per eigenvalue combination in `a_coef`.
 g_matrix_to_a_matrix <- function(g_matrix, a_coef) {
 
 	a_matrix <- matrix(0, nrow=nrow(g_matrix), ncol=ncol(a_coef), dimnames=list(rownames(g_matrix), colnames(a_coef)))
@@ -910,6 +941,10 @@ g_matrix_to_a_matrix_backprop <- function(a_coef, d_energy_d_a_matrix) {
 #' @param lambda_prime_vec eigenvalues augmented with tumbling rate
 #' @param proton_mhz spectrometer proton field strength in MHz
 #' @param gradient a logical value indicating whether to calculate the derivative
+#'
+#' @return Numeric vector of sigma rates, one per row of `a_matrix`. If
+#'   `gradient = TRUE`, the `"gradient"` attribute is a matrix of derivatives
+#'   with respect to `a_matrix`.
 a_matrix_to_sigma <- function(a_matrix, lambda_prime_vec, proton_mhz, gradient=FALSE) {
 
 	# K^2
@@ -2244,6 +2279,9 @@ write_spec_den_relax_data <- function(spec_den_relax_data, prefix_path) {
 #' @param dnames list with dimension names as alternative to specifying `n`
 #' @param dfrom integer with dimension to move from
 #' @param dto integer with dimension to move to (should be one greater than `dfrom`)
+#'
+#' @return Array with the same entries as `a`, reshaped so size is moved from
+#'   dimension `dfrom` into dimension `dto`.
 array_shift <- function(a, n=NULL, dnames=NULL, dfrom=1, dto=2) {
 
 	if (!is.null(n)) {
@@ -2288,6 +2326,9 @@ array_shift <- function(a, n=NULL, dnames=NULL, dfrom=1, dto=2) {
 #' @param rates named numeric vector with rates
 #' @param spec_den_data_list list of data for calculating spectral density functions
 #' @param proton_mhz spectrometer proton field strength in MHz
+#'
+#' @return Named list of numeric sigma vectors, one entry for each block in
+#'   `spec_den_data_list`.
 #'
 #' @export
 coord_array_to_sigma <- function(coord_array, rates, spec_den_data_list, proton_mhz) {
@@ -2440,6 +2481,10 @@ coord_array_to_sigma_energy <- function(coord_array, rates, spec_den_data_list, 
 #' @param coord_array 3D array (atoms, xyz, models) with atomic coordinates
 #' @param rates named numeric vector with rates
 #' @param spec_den_relax_data_list list of data for calculating relaxation rates
+#'
+#' @return Named list of numeric matrices of relaxation rates, one per block in
+#'   `spec_den_relax_data_list`, with columns corresponding to relaxation-rate
+#'   types.
 #'
 #' @export
 coord_array_to_relax <- function(coord_array, rates, spec_den_relax_data_list) {

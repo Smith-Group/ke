@@ -15,6 +15,10 @@ coord_array_to_sigma(coord_array, rates, spec_den_data_list, proton_mhz)
 
 \item{proton_mhz}{spectrometer proton field strength in MHz}
 }
+\value{
+Named list of numeric sigma vectors, one entry for each block in
+\code{spec_den_data_list}.
+}
 \description{
 Calculate cross relaxation rates from atomic coordinates
 }

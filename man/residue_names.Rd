@@ -15,6 +15,10 @@ aa1_to_aa3
 
 aa3_to_aa1
 }
+\value{
+Named character vector mapping one-letter and three-letter amino-acid
+residue codes.
+}
 \description{
 Convert between one and three letter residue names
 }

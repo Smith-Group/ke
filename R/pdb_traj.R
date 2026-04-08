@@ -38,6 +38,8 @@ pdb_traj_open <- function(filename, atomids = NULL, frame_max_lines = 10000) {
 #'
 #' @param traj_data list structure with data necessary for reads
 #'
+#' @return No return value, called for side effects.
+#'
 #' @export
 pdb_traj_close <- function(traj_data) {
 
@@ -221,6 +223,9 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 #' @param proton_mhz proton Larmor frequency in MHz
 #' @param terms vector of terms to use in calculating the kernel
 #' @param ntrunc number of trailing kernel elements over which to spread the truncated tail contribution
+#'
+#' @return Numeric matrix with rows `sigma` and `rho` and one column per lag in
+#'   the truncated autocorrelation function.
 #'
 #' @export
 noe_dacf_kernel <- function(dacf, dt, tauc, proton_mhz, terms=c("0", "omega", "2omega"), ntrunc = 1) {

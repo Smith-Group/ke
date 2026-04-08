@@ -13,6 +13,10 @@ collapse_array(arr, idx_list, func = `+`)
 
 \item{func}{function to apply}
 }
+\value{
+Matrix or array with the first two dimensions collapsed according to
+\code{idx_list}, preserving any trailing dimensions.
+}
 \description{
 Collapse first two dimensions of an array
 }

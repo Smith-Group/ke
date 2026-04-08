@@ -13,6 +13,10 @@ get_rate_count_mat(trans_rate, all_permutations, eps_factor = 0.5)
 
 \item{eps_factor}{rates must differ by this amount times the lowest rate}
 }
+\value{
+Integer matrix whose rows count how often each base or permutation
+rate contributes to each combined eigenvalue.
+}
 \description{
 Get counts enabling calculation of eigenvalues from individual rates
 }

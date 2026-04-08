@@ -11,6 +11,10 @@ unique_atom_pair_map(permutation)
 
 This is useful for calculating interactions within a permutation group}
 }
+\value{
+List of two-row matrices, each giving one equivalence class of atom
+pairs within the permutation group.
+}
 \description{
 Generate matrix of possible permuted assignments of atom pairs within a group
 }

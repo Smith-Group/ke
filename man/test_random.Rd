@@ -6,6 +6,9 @@
 \usage{
 test_random()
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Tests with random internuclear vectors of length 1
 }

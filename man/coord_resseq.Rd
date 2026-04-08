@@ -14,6 +14,10 @@ coord_resseq(coord) <- value
 
 \item{value}{integer or character vector with no more than four digits}
 }
+\value{
+Getter: integer vector of residue sequence numbers. Setter:
+modified \code{coord} with updated residue sequence numbers.
+}
 \description{
 Get or set residue sequence number
 }

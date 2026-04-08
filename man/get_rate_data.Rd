@@ -20,6 +20,10 @@ get_rate_data(
 
 \item{validate}{passed onto \code{get_eigen_groups()}}
 }
+\value{
+List containing the combined transition matrix and the grouping data
+returned by \code{\link[=get_eigen_groups]{get_eigen_groups()}}.
+}
 \description{
 Construct \code{k} coefficients in a recursive manner
 }

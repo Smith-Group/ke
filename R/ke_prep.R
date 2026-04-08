@@ -91,6 +91,9 @@ find_aromatic_permutations <- function(atomids) {
 #' @param atom_permutations list of permutations from `find_methyl_permutations()` and 
 #'    `find_aromatic_permutations()`
 #'
+#' @return List of integer matrices giving, for each supported multiplicity, the
+#'   atom index assignments under the supplied permutations.
+#'
 #' @examples
 #' pdb2lum <- read_ensemble(
 #'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
@@ -126,6 +129,9 @@ make_atom_perm_list <- function(atomids, atom_permutations) {
 #' @param permutation single permutation matrix
 #'
 #' This is useful for calculating interactions between a permutation group and other atoms
+#'
+#' @return Character matrix of unique atom assignments, with one row per atom and
+#'   one column per distinct assignment within the permutation group.
 #'
 #' @examples
 #' pdb2lum <- read_ensemble(
@@ -163,6 +169,9 @@ unique_atom_map <- function(permutation) {
 #' @param permutation single permutation matrix
 #'
 #' This is useful for calculating interactions within a permutation group
+#'
+#' @return List of two-row matrices, each giving one equivalence class of atom
+#'   pairs within the permutation group.
 #'
 #' @examples
 #' pdb2lum <- read_ensemble(
@@ -208,6 +217,9 @@ unique_atom_pair_map <- function(permutation) {
 #' @param k desired eigenvalue for the rate matrix
 #' @param n_names character vector with row and columns
 #'
+#' @return Square transition rate matrix with off-diagonal rates filled and the
+#'   diagonal left as `NA` until [rate_mat_diag()] is applied.
+#'
 #' @examples
 #' rate_mat <- rate_mat_simple(4, c("a", "b", "c", "d"))
 #' rate_mat <- rate_mat_diag(rate_mat)
@@ -227,6 +239,9 @@ rate_mat_simple <- function(k, n_names) {
 #' @param group_vec integer vector giving group membership of each state
 #' @param k_intra desired eigenvalue for intra-group transitions
 #' @param k_inter desired eigenvalue for inter-group transitions
+#'
+#' @return Square transition rate matrix with group-specific off-diagonal rates
+#'   and diagonal entries left as `NA`.
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
@@ -254,6 +269,9 @@ rate_mat_intra_inter <- function(group_vec, k_intra, k_inter) {
 #'
 #' @param rate_mat_a first transition rate matrix
 #' @param rate_mat_b second transition rate matrix
+#'
+#' @return Square transition rate matrix representing the combined process on
+#'   the Kronecker-product state space.
 #'
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
@@ -286,6 +304,9 @@ rate_mat_kronecker <- function(rate_mat_a, rate_mat_b) {
 #'
 #' @param rate_mat square transition rate matrix
 #'
+#' @return Transition rate matrix with each diagonal entry replaced by the
+#'   negative sum of its off-diagonal row entries.
+#'
 #' @export
 rate_mat_diag <- function(rate_mat) {
 
@@ -304,6 +325,9 @@ rate_mat_diag <- function(rate_mat) {
 #' @param trans_rate transition rate matrix
 #' @param all_permutations all possible permutations (i.e. methyl, aromatic) applied
 #' @param eps_factor rates must differ by this amount times the lowest rate
+#'
+#' @return Integer matrix whose rows count how often each base or permutation
+#'   rate contributes to each combined eigenvalue.
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
@@ -388,6 +412,9 @@ get_rate_count_mat <- function(trans_rate, all_permutations, eps_factor=0.5) {
 #' @param eps_factor rates must differ by this amount times the lowest rate
 #' @param eps_log10 log10(rates) must differ by this amount
 #'
+#' @return Named list of integer index vectors, grouping numerically equivalent
+#'   rates.
+#'
 #' If set, eps_log10 is used and eps_factor is bypassed.
 get_rate_groups <- function(rates, eps_factor=0.5, eps_log10=NULL) {
 
@@ -425,6 +452,9 @@ get_rate_groups <- function(rates, eps_factor=0.5, eps_log10=NULL) {
 #'
 #' This only works with rate matrices returned by `rate_mat_simple()` and 
 #' `rate_mat_intra_inter`. It does not work with `rate_mat_kronecker()`.
+#'
+#' @return Numeric matrix assigning each state to a subset for each unique rate
+#'   group.
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
@@ -473,6 +503,9 @@ calc_subset_mat <- function(trans_rate_eigen, rate_groups=get_rate_groups(-trans
 #' @param rate_subset_mat matrix (ensemble members, rates) giving the subset each ensemble member belongs to
 #' @param permutation_counts vector with counts of states and names giving the rate
 #'
+#' @return Numeric matrix expanding `rate_subset_mat` to the larger state space
+#'   implied by the permutation counts.
+#'
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
 #' rate_mat_fast <- rate_mat_diag(rate_mat_fast)
@@ -504,6 +537,10 @@ expand_subset_mat <- function(rate_subset_mat, permutation_counts) {
 #' @param subset_mat created by `calc_subset_mat()` or `expand_subset_mat()`
 #' @param validate check to see whether result is correct using another method
 #' @param eps_factor epsilon used for heuristically matching rates generated in two ways
+#'
+#' @return List describing the eigenvalue grouping structure, including state
+#'   populations, unique rates, subset assignments, and coefficient matrices used
+#'   to reconstruct `a` values from grouped states.
 #'
 #' @examples
 #' rate_mat <- rate_mat_intra_inter(c(0,0,1,1), 10, 4)
@@ -658,6 +695,9 @@ get_eigen_groups <- function(trans_rate_eigen, all_rates=NULL, subset_mat=NULL, 
 #' @param parent_data previous data to modify assuming application of Kronecker product
 #' @param all_rates vector of all rates
 #' @param validate passed onto `get_eigen_groups()`
+#'
+#' @return List containing the combined transition matrix and the grouping data
+#'   returned by [get_eigen_groups()].
 #'
 #' @examples
 #' rate_mat_fast <- rate_mat_simple(10, c("f1", "f2"))
@@ -853,6 +893,10 @@ equiv_list_name <- function(equiv_list, restype = TRUE, sep = ":", multiatom_for
 #' @param proton_mhz proton frequency in MHz
 #' @param mix_times mixing times to calculate
 #'
+#' @return List containing coordinates, rate matrices, named rates, equivalent
+#'   atom groups, symmetry permutations, proton frequency, and mixing times used
+#'   for kinetic-ensemble calculations.
+#'
 #' @export
 make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1/1e-12, karo = 1/100e-6, proton_mhz, mix_times) {
 
@@ -885,6 +929,10 @@ make_ke_data <- function(coord_array, base_rate_mat, base_rates, kc, kmethyl = 1
 #' @param perm_internal logical indicating whether to include atom pair internal to
 #'    permutation groups
 #' @param sigma optional numeric vector of cross relaxation rates
+#'
+#' @return Named list of spectral-density data blocks. Each block contains atom
+#'   pairs, grouping matrices, `a` coefficients, and eigenvalue coefficients for
+#'   one pair-type combination.
 #'
 #' @export
 make_spec_den_data <- function(ke_data, equiv_pair_mat, perm_internal = FALSE, sigma = NULL) {
@@ -2002,6 +2050,8 @@ make_spec_den_relax_data <- function(atom_relax_data, base_rate_mat, base_rates,
 }
 
 #' Tests with toy example from Smith 2020 J Biomol NMR
+#'
+#' @return No return value, called for side effects.
 test_toy <- function() {
 
 	toy_r_mat <- matrix(c(
@@ -2033,6 +2083,8 @@ test_toy <- function() {
 }
 
 #' Tests with random internuclear vectors of length 1
+#'
+#' @return No return value, called for side effects.
 test_random <- function() {
 
 	if (!"r_mat_check" %in% ls()) {
@@ -2045,6 +2097,8 @@ test_random <- function() {
 }
 
 #' Tests with EROS3 ensemble subset (First two ensemble members and five atoms from M1)
+#'
+#' @return No return value, called for side effects.
 test_eros3 <- function() {
 
 	eros3_coord <- read_ensemble("https://files.rcsb.org/download/6V5D.pdb")

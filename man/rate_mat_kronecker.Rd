@@ -11,6 +11,10 @@ rate_mat_kronecker(rate_mat_a, rate_mat_b)
 
 \item{rate_mat_b}{second transition rate matrix}
 }
+\value{
+Square transition rate matrix representing the combined process on
+the Kronecker-product state space.
+}
 \description{
 Calculate Kronecker product of two transition rate matrices
 }

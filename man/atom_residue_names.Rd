@@ -25,6 +25,10 @@ charmm_to_pdb
 
 pdb_to_charmm
 }
+\value{
+Named character vector mapping atom/residue identifiers between naming
+conventions.
+}
 \description{
 Convert between proton atom/residue name pairs
 }

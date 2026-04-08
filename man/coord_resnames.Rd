@@ -14,6 +14,10 @@ coord_resnames(coord) <- value
 
 \item{value}{character vector with three characters per element}
 }
+\value{
+Getter: character vector of three-letter residue names. Setter:
+modified \code{coord} with updated residue names.
+}
 \description{
 Get or set three-character residue names
 }

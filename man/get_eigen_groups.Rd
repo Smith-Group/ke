@@ -23,6 +23,11 @@ get_eigen_groups(
 
 \item{eps_factor}{epsilon used for heuristically matching rates generated in two ways}
 }
+\value{
+List describing the eigenvalue grouping structure, including state
+populations, unique rates, subset assignments, and coefficient matrices used
+to reconstruct \code{a} values from grouped states.
+}
 \description{
 Get \code{k} coefficients for creating linear combinations of \code{a} values from \code{g} values
 }

@@ -13,6 +13,10 @@ rate_mat_intra_inter(group_vec, k_intra, k_inter)
 
 \item{k_inter}{desired eigenvalue for inter-group transitions}
 }
+\value{
+Square transition rate matrix with group-specific off-diagonal rates
+and diagonal entries left as \code{NA}.
+}
 \description{
 Create hierarchical transition rate matrix
 }

@@ -14,6 +14,10 @@ coord_atomresnames(coord) <- value
 
 \item{value}{character vector with eight characters per element (1-4: atom name, 6-8: residue name)}
 }
+\value{
+Getter: character vector of atom/residue identifiers. Setter:
+modified \code{coord} with updated atom/residue identifiers.
+}
 \description{
 Get or set atom/residue name pairs
 }

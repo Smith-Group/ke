@@ -11,9 +11,13 @@ get_rate_groups(rates, eps_factor = 0.5, eps_log10 = NULL)
 
 \item{eps_factor}{rates must differ by this amount times the lowest rate}
 
-\item{eps_log10}{log10(rates) must differ by this amount
+\item{eps_log10}{log10(rates) must differ by this amount}
+}
+\value{
+Named list of integer index vectors, grouping numerically equivalent
+rates.
 
-If set, eps_log10 is used and eps_factor is bypassed.}
+If set, eps_log10 is used and eps_factor is bypassed.
 }
 \description{
 Find groups of numerically equivalent rates (degenerate eigenvalues)

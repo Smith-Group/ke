@@ -17,6 +17,10 @@ array_shift(a, n = NULL, dnames = NULL, dfrom = 1, dto = 2)
 
 \item{dto}{integer with dimension to move to (should be one greater than \code{dfrom})}
 }
+\value{
+Array with the same entries as \code{a}, reshaped so size is moved from
+dimension \code{dfrom} into dimension \code{dto}.
+}
 \description{
 Shift from one array dimension to another
 }

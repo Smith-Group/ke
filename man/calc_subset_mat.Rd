@@ -17,6 +17,10 @@ calc_subset_mat(
 This only works with rate matrices returned by \code{rate_mat_simple()} and
 \code{rate_mat_intra_inter}. It does not work with \code{rate_mat_kronecker()}.}
 }
+\value{
+Numeric matrix assigning each state to a subset for each unique rate
+group.
+}
 \description{
 Determine subsets of states within transition rate matrices
 }

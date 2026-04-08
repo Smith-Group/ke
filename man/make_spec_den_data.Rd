@@ -22,6 +22,11 @@ permutation groups}
 
 \item{sigma}{optional numeric vector of cross relaxation rates}
 }
+\value{
+Named list of spectral-density data blocks. Each block contains atom
+pairs, grouping matrices, \code{a} coefficients, and eigenvalue coefficients for
+one pair-type combination.
+}
 \description{
 Create data structures for calculating sigma/rho from dipole-dipole interaction tensors
 }

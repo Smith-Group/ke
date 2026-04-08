@@ -32,6 +32,11 @@ make_ke_data(
 
 \item{mix_times}{mixing times to calculate}
 }
+\value{
+List containing coordinates, rate matrices, named rates, equivalent
+atom groups, symmetry permutations, proton frequency, and mixing times used
+for kinetic-ensemble calculations.
+}
 \description{
 Encapsulate kinetic ensemble data into a list data structure
 }

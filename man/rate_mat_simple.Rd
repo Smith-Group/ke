@@ -11,6 +11,10 @@ rate_mat_simple(k, n_names)
 
 \item{n_names}{character vector with row and columns}
 }
+\value{
+Square transition rate matrix with off-diagonal rates filled and the
+diagonal left as \code{NA} until \code{\link[=rate_mat_diag]{rate_mat_diag()}} is applied.
+}
 \description{
 Create transition rate matrix with single rate
 }

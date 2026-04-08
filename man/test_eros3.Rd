@@ -6,6 +6,9 @@
 \usage{
 test_eros3()
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Tests with EROS3 ensemble subset (First two ensemble members and five atoms from M1)
 }

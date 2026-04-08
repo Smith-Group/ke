@@ -26,6 +26,10 @@ noe_dacf_kernel(
 
 \item{ntrunc}{number of trailing kernel elements over which to spread the truncated tail contribution}
 }
+\value{
+Numeric matrix with rows \code{sigma} and \code{rho} and one column per lag in
+the truncated autocorrelation function.
+}
 \description{
 Calculate kernel weights for determining NOE sigma and rho from a dipolar autocorrelation function
 }

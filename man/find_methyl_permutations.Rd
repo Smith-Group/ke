@@ -17,7 +17,10 @@ Columns correspond to equivalent atoms whose coordinates should be swapped.
 Find permutations to coordinates of XH3 groups
 }
 \examples{
-pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+pdb2lum <- read_ensemble(
+  system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+  proton_only = TRUE
+)
 find_methyl_permutations(dimnames(pdb2lum)[[2]])
 
 }

@@ -16,7 +16,10 @@ make_atom_perm_list(atomids, atom_permutations)
 Create list of matrices for doing two or three atom permutations
 }
 \examples{
-pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+pdb2lum <- read_ensemble(
+  system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+  proton_only = TRUE
+)
 perm_methyl <- find_methyl_permutations(dimnames(pdb2lum)[[2]])
 perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 perm_list <- make_atom_perm_list(dimnames(pdb2lum)[[2]], c(perm_methyl, perm_aro))

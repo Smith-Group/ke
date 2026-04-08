@@ -8,7 +8,10 @@
 #'    Columns correspond to equivalent atoms whose coordinates should be swapped.
 #'
 #' @examples
-#' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+#' pdb2lum <- read_ensemble(
+#'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+#'   proton_only = TRUE
+#' )
 #' find_methyl_permutations(dimnames(pdb2lum)[[2]])
 #'
 #' @export
@@ -55,7 +58,10 @@ find_methyl_permutations <- function(atomids) {
 #'    Columns correspond to equivalent atoms whose coordinates should be swapped.
 #'
 #' @examples
-#' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+#' pdb2lum <- read_ensemble(
+#'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+#'   proton_only = TRUE
+#' )
 #' find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #'
 #' @export
@@ -86,7 +92,10 @@ find_aromatic_permutations <- function(atomids) {
 #'    `find_aromatic_permutations()`
 #'
 #' @examples
-#' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+#' pdb2lum <- read_ensemble(
+#'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+#'   proton_only = TRUE
+#' )
 #' perm_methyl <- find_methyl_permutations(dimnames(pdb2lum)[[2]])
 #' perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #' perm_list <- make_atom_perm_list(dimnames(pdb2lum)[[2]], c(perm_methyl, perm_aro))
@@ -119,7 +128,10 @@ make_atom_perm_list <- function(atomids, atom_permutations) {
 #' This is useful for calculating interactions between a permutation group and other atoms
 #'
 #' @examples
-#' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+#' pdb2lum <- read_ensemble(
+#'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+#'   proton_only = TRUE
+#' )
 #' perm_methyl <- find_methyl_permutations(dimnames(pdb2lum)[[2]])
 #' perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #' unique_atom_map(perm_methyl[[1]])
@@ -153,7 +165,10 @@ unique_atom_map <- function(permutation) {
 #' This is useful for calculating interactions within a permutation group
 #'
 #' @examples
-#' pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only=TRUE)
+#' pdb2lum <- read_ensemble(
+#'   system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+#'   proton_only = TRUE
+#' )
 #' perm_methyl <- find_methyl_permutations(dimnames(pdb2lum)[[2]])
 #' perm_aro <- find_aromatic_permutations(dimnames(pdb2lum)[[2]])
 #' unique_atom_pair_map(perm_methyl[[1]])
@@ -2067,7 +2082,10 @@ test_eros3 <- function() {
 
 test_gb3 <- function() {
 
-	pdb2lum <- read_ensemble("https://files.rcsb.org/download/2LUM.pdb", proton_only = TRUE)[,,1:3]
+	pdb2lum <- read_ensemble(
+		system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke"),
+		proton_only = TRUE
+	)[,,c(1, 3, 5)]
 	
 	base_rates <- c(kens=1/2e-9)
 	

@@ -1,7 +1,7 @@
 library(ke)
 
-# names of PDB files in ensemble
-pdb_names <- "ensemble.pdb"
+# input PDB path(s), switch to other PDB file(s) if desired
+pdb_paths <- system.file("extdata", "gb3", "2lum_subset.pdb.gz", package = "ke")
 
 # exclude groups with multiple atoms
 exclude_multiatom_groups <- FALSE
@@ -10,7 +10,7 @@ exclude_multiatom_groups <- FALSE
 dist_cutoff <- 5
 
 if (! "ensemble_coord" %in% ls()) {
-	ensemble_coord <- ke::read_ensemble(pdb_names, proton_only=FALSE)[,,,drop=FALSE]
+	ensemble_coord <- ke::read_ensemble(pdb_paths, proton_only=FALSE)[,,,drop=FALSE]
 }
 
 # groupings
@@ -113,5 +113,7 @@ singleton_data <- data.frame(
 	rsd=group_r_sd[singleton_pair_idx]
 )
 
-# write out data
-write.csv(singleton_data, "singleton_data.csv")
+# write out data; switch to "singleton_data.csv" to write into the working directory
+output_path <- file.path(tempdir(), "singleton_data.csv")
+write.csv(singleton_data, output_path)
+message("Wrote singleton data to: ", output_path)

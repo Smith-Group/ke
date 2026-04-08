@@ -6,3 +6,76 @@ template:
 authors:
   Colin Smith:
     href: http://smithlab.wesleyan.edu
+reference:
+  - title: Spectral-Density Data
+    desc: Build, reshape, and serialize spectral-density and relaxation term tables.
+    contents:
+      - make_spec_den_data
+      - matches("^make_(r1|r2|sigma)_spec_den_term_array$")
+      - matches("spec_den_term_array")
+      - starts_with("read_spec_den")
+      - write_spec_den_relax_data
+      - make_spec_den_relax_data
+      - noe_to_sigma
+  - title: Kinetic Ensemble Coordinate-Based Calculations
+    desc: Compute grouped restraints and relaxation rates directly from coordinate ensembles.
+    contents:
+      - starts_with("coord_array_to_g")
+      - starts_with("coord_array_to_sigma")
+      - starts_with("coord_array_to_relax")
+      - g_to_energy
+      - quadratic_loss
+      - power_scale
+      - power_scaled_loss
+  - title: Trajectory Processing
+    desc: Stream trajectory data from PDB files and derive dipolar autocorrelation inputs.
+    contents:
+      - starts_with("pdb_traj")
+      - noe_dacf_kernel
+  - title: Coordinate And Atom Metadata
+    desc: Read PDB-style coordinates, convert naming conventions, and inspect atom- and residue-level annotations.
+    contents:
+      - aa1_to_aa3
+      - amber_to_pdb
+      - atom_lines_to_coord
+      - coord_to_atom_lines
+      - starts_with("coord_atom")
+      - starts_with("coord_res")
+      - coord_rapidly_exchangeable
+      - coord_proton_groups
+      - bond_separation
+      - read_ensemble
+  - title: Kinetic Ensemble Core
+    desc: Core numerical methods underlying the Kinetic Ensemble calculation, transforming coordinates into tensors, mode amplitudes, and the quantities that drive the coordinate-based calculations.
+    contents:
+      - starts_with("coord_array_to_r_array")
+      - starts_with("r_array_to_d_array")
+      - starts_with("d_array_to_g")
+      - starts_with("g_matrix_to_a_matrix")
+      - dxyz_dunit_to_overall_modes
+      - matches("^a_matrix_to_(sigma|relax)")
+      - euler_zyz_matrix
+      - d_real_rank2
+      - collapse_array
+      - array_shift
+      - deriv_check
+  - title: Permutations And Rate Models
+    desc: Build symmetry-aware permutation maps, transition-rate matrices, and kinetic ensemble metadata.
+    contents:
+      - starts_with("find_")
+      - make_atom_perm_list
+      - starts_with("unique_atom")
+      - starts_with("rate_mat")
+      - starts_with("get_rate")
+      - get_eigen_groups
+      - calc_subset_mat
+      - expand_subset_mat
+      - subset_idx_to_grouping_mat
+      - rate_data_to_mat_list
+      - make_equiv_list
+      - equiv_list_name
+      - make_ke_data
+  - title: Validation Examples
+    desc: Reproduce the package's bundled validation and sanity-check workflows.
+    contents:
+      - starts_with("test_")

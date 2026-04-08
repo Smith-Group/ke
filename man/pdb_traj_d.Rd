@@ -10,7 +10,8 @@ pdb_traj_d(
   segment_nums,
   atom_pair_mat_list,
   unit = FALSE,
-  d_dir = NULL
+  d_dir = NULL,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ pdb_traj_d(
 \item{unit}{logical indicating whether to convert to unit vectors}
 
 \item{d_dir}{directory where <segment_num>.rds files written with calculated tensors}
+
+\item{verbose}{logical indicating whether to emit progress messages}
 }
 \value{
 list with NULL values of length segment_nums

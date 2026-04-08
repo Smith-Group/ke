@@ -145,17 +145,20 @@ pdb_traj_apply <- function(traj_data, FUN, nframes = 1000, nsegments = 10, skip 
 #' @param atom_pair_mat_list list of matrices (pairs, 2) 
 #' @param radial_only logical indicating only radial fluctuation should be accounted for
 #' @param dacf_dir directory where <segment_num>.rds files written with calculated DACF
+#' @param verbose logical indicating whether to emit progress messages
 #'
 #' @return list with NULL values of length segment_nums
 #'
 #' @export
-pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, radial_only=FALSE, dacf_dir=NULL) {
+pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, radial_only=FALSE, dacf_dir=NULL, verbose=FALSE) {
 
 	segment_size <- nframes
 
 	dir.create(dacf_dir, showWarnings = FALSE, recursive = TRUE)
 	
-	print(segment_nums)
+	if (verbose) {
+		message("Processing segments: ", paste(segment_nums, collapse = ", "))
+	}
 	
 	acf_files <- file.path(dacf_dir, paste0(segment_nums, ".rds"))
 
@@ -276,15 +279,18 @@ noe_dacf_kernel <- function(dacf, dt, tauc, proton_mhz, terms=c("0", "omega", "2
 #' @param atom_pair_mat_list list of matrices (pairs, 2)
 #' @param unit logical indicating whether to convert to unit vectors 
 #' @param d_dir directory where <segment_num>.rds files written with calculated tensors
+#' @param verbose logical indicating whether to emit progress messages
 #'
 #' @return list with NULL values of length segment_nums
 #'
 #' @export
-pdb_traj_d <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, unit=FALSE, d_dir=NULL) {
+pdb_traj_d <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, unit=FALSE, d_dir=NULL, verbose=FALSE) {
 
 	dir.create(d_dir, showWarnings = FALSE, recursive = TRUE)
 	
-	print(segment_nums)
+	if (verbose) {
+		message("Processing segments: ", paste(segment_nums, collapse = ", "))
+	}
 	
 	d_files <- file.path(d_dir, paste0(segment_nums, ".rds"))
 

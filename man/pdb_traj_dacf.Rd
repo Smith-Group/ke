@@ -10,7 +10,8 @@ pdb_traj_dacf(
   segment_nums,
   atom_pair_mat_list,
   radial_only = FALSE,
-  dacf_dir = NULL
+  dacf_dir = NULL,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ pdb_traj_dacf(
 \item{radial_only}{logical indicating only radial fluctuation should be accounted for}
 
 \item{dacf_dir}{directory where <segment_num>.rds files written with calculated DACF}
+
+\item{verbose}{logical indicating whether to emit progress messages}
 }
 \value{
 list with NULL values of length segment_nums

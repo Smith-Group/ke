@@ -1533,7 +1533,7 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 #' This helper validates a length-two `perm_rates` specification. Missing
 #' values indicate no permutation on that side, while non-missing values give
 #' the symbolic kinetic rate constants to associate with the inferred
-#' permutation processes on the `atom1` and `atom2` sides.
+#' permutation processes on the `a1` and `a2` sides.
 #'
 #' @param perm_rates numeric vector of length 2
 #'
@@ -1561,8 +1561,8 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 	}
 
 	rate_values <- perm_rates
-	names(rate_values) <- c("atom1", "atom2")
-	names(rate_names) <- c("atom1", "atom2")
+	names(rate_values) <- c("a1", "a2")
+	names(rate_names) <- c("a1", "a2")
 
 	list(
 		rate_values = rate_values,
@@ -1618,9 +1618,9 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 		return(FALSE)
 	}
 
-	atom1_levels <- unique(block[, 1])
-	atom2_levels <- unique(block[, 2])
-	if (length(atom1_levels) != block_size || length(atom2_levels) != block_size) {
+	a1_levels <- unique(block[, 1])
+	a2_levels <- unique(block[, 2])
+	if (length(a1_levels) != block_size || length(a2_levels) != block_size) {
 		return(FALSE)
 	}
 
@@ -1633,11 +1633,11 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 		sum(sx != sy)
 	}
 
-	atom1_diff <- outer(atom1_levels, atom1_levels, Vectorize(count_char_diffs))
-	atom2_diff <- outer(atom2_levels, atom2_levels, Vectorize(count_char_diffs))
+	a1_diff <- outer(a1_levels, a1_levels, Vectorize(count_char_diffs))
+	a2_diff <- outer(a2_levels, a2_levels, Vectorize(count_char_diffs))
 
-	all(atom1_diff[upper.tri(atom1_diff)] == 1L) &&
-		all(atom2_diff[upper.tri(atom2_diff)] == 1L)
+	all(a1_diff[upper.tri(a1_diff)] == 1L) &&
+		all(a2_diff[upper.tri(a2_diff)] == 1L)
 }
 
 #' Classify one expanded atom-pair block
@@ -1653,15 +1653,15 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 .classify_spec_den_relax_block <- function(block) {
 	block <- as.matrix(block)
 	block_size <- nrow(block)
-	atom1_levels <- unique(block[, 1])
-	atom2_levels <- unique(block[, 2])
-	multiplicity <- c(atom1 = length(atom1_levels), atom2 = length(atom2_levels))
+	a1_levels <- unique(block[, 1])
+	a2_levels <- unique(block[, 2])
+	multiplicity <- c(a1 = length(a1_levels), a2 = length(a2_levels))
 
 	if (block_size %in% c(2L, 3L) && .is_internal_spec_den_block(block)) {
 		return(list(
 			type = "internal",
-			multiplicity = c(atom1 = 1L, atom2 = block_size),
-			order = "atom1_fastest",
+			multiplicity = c(a1 = 1L, a2 = block_size),
+			order = "a1_fastest",
 			block_index_order = seq_len(block_size)
 		))
 	}
@@ -1670,31 +1670,31 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 		return(NULL)
 	}
 
-	expected_atom1_fastest <- cbind(
-		atom1 = rep(atom1_levels, times = length(atom2_levels)),
-		atom2 = rep(atom2_levels, each = length(atom1_levels))
+	expected_a1_fastest <- cbind(
+		a1 = rep(a1_levels, times = length(a2_levels)),
+		a2 = rep(a2_levels, each = length(a1_levels))
 	)
-	expected_atom2_fastest <- cbind(
-		atom1 = rep(atom1_levels, each = length(atom2_levels)),
-		atom2 = rep(atom2_levels, times = length(atom1_levels))
+	expected_a2_fastest <- cbind(
+		a1 = rep(a1_levels, each = length(a2_levels)),
+		a2 = rep(a2_levels, times = length(a1_levels))
 	)
 
-	if (identical(unname(block), unname(expected_atom1_fastest))) {
+	if (identical(unname(block), unname(expected_a1_fastest))) {
 		return(list(
 			type = "cartesian",
 			multiplicity = multiplicity,
-			order = "atom1_fastest",
+			order = "a1_fastest",
 			block_index_order = seq_len(block_size)
 		))
 	}
-	if (identical(unname(block), unname(expected_atom2_fastest))) {
+	if (identical(unname(block), unname(expected_a2_fastest))) {
 		return(list(
 			type = "cartesian",
 			multiplicity = multiplicity,
-			order = "atom2_fastest",
+			order = "a2_fastest",
 			block_index_order = match(
-				paste(expected_atom1_fastest[, 1], expected_atom1_fastest[, 2], sep = "\r"),
-				paste(expected_atom2_fastest[, 1], expected_atom2_fastest[, 2], sep = "\r")
+				paste(expected_a1_fastest[, 1], expected_a1_fastest[, 2], sep = "\r"),
+				paste(expected_a2_fastest[, 1], expected_a2_fastest[, 2], sep = "\r")
 			)
 		))
 	}
@@ -1708,7 +1708,7 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 #' to the same relaxation-rate are separated by \eqn{N}, the number of
 #' relaxation-rates. This helper tests candidate block sizes against the full
 #' table, allowing each `4`, `6`, or `9` row Cartesian block to have its own
-#' atom1-fastest or atom2-fastest ordering while also recognizing special
+#' a1-fastest or a2-fastest ordering while also recognizing special
 #' internal-permutation blocks of size `2` and `3`.
 #'
 #' @param atom_pairs data frame or matrix whose first two columns define the
@@ -1719,11 +1719,11 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 #'       expanded atom-pair table.}
 #'     \item{`inferred_order`}{Character scalar giving the within-block
 #'       ordering after canonicalization. Supported layouts are always mapped
-#'       onto `"atom1_fastest"`.}
+#'       onto `"a1_fastest"`.}
 #'     \item{`row_order`}{Integer permutation that maps the input rows onto the
-#'       canonical atom1-fastest expanded ordering.}
+#'       canonical a1-fastest expanded ordering.}
 #'     \item{`inferred_multiplicity`}{Named integer vector giving the inferred
-#'       multiplicities of the `atom1` and `atom2` sides for kinetic-model
+#'       multiplicities of the `a1` and `a2` sides for kinetic-model
 #'       construction.}
 #'   }
 #'
@@ -1769,7 +1769,7 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 			inferred_multiplicity <- block_info[[1]][["multiplicity"]]
 		} else if (block_size %in% c(2L, 3L)) {
 			if (all(block_type == "internal")) {
-				inferred_multiplicity <- c(atom1 = 1L, atom2 = block_size)
+				inferred_multiplicity <- c(a1 = 1L, a2 = block_size)
 			} else {
 				cart_idx <- block_type == "cartesian"
 				cart_multiplicity <- block_multiplicity[cart_idx, , drop = FALSE]
@@ -1789,10 +1789,10 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 			if (!all(block_type == "cartesian") || !all(block_multiplicity == 1L)) {
 				next
 			}
-			inferred_multiplicity <- c(atom1 = 1L, atom2 = 1L)
+			inferred_multiplicity <- c(a1 = 1L, a2 = 1L)
 		}
 
-		inferred_order <- "atom1_fastest"
+		inferred_order <- "a1_fastest"
 
 		row_order <- unlist(
 			lapply(seq_len(n_relax_rates), function(i) row_index_mat[i, block_info[[i]][["block_index_order"]]]),
@@ -1841,7 +1841,7 @@ noe_to_sigma <- function(noe, r1, dnoe = NULL, dr1 = NULL, nucleus_x = "15N") {
 #' @param base_rates named numeric vector of symbolic base-process rates used to
 #'   label `lambda_int_coef`
 #' @param perm_rates length-two numeric vector describing permutation processes
-#'   on the `atom1` and `atom2` sides. `NA` indicates no permutation, while a
+#'   on the `a1` and `a2` sides. `NA` indicates no permutation, while a
 #'   non-missing named value supplies the symbolic rate constant for the
 #'   inferred permutation on that side.
 #'
@@ -1930,8 +1930,8 @@ make_spec_den_relax_data <- function(atom_relax_data, base_rate_mat, base_rates,
 		rate_mat_simple(rate_value, paste0(side_label, seq_len(mult)))
 	}
 
-	left_perm_mat <- make_perm_matrix("atom1")
-	right_perm_mat <- make_perm_matrix("atom2")
+	left_perm_mat <- make_perm_matrix("a1")
+	right_perm_mat <- make_perm_matrix("a2")
 
 	rate_data <- get_rate_data(base_rate_mat, validate = TRUE)
 	if (!is.null(right_perm_mat)) {
@@ -1942,22 +1942,22 @@ make_spec_den_relax_data <- function(atom_relax_data, base_rate_mat, base_rates,
 	}
 
 	all_permutations <- list()
-	if (!is.na(perm_info[["rate_values"]][["atom1"]])) {
+	if (!is.na(perm_info[["rate_values"]][["a1"]])) {
 		all_permutations <- c(
 			all_permutations,
-			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["atom1"]]))
+			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["a1"]]))
 		)
 	}
-	if (!is.na(perm_info[["rate_values"]][["atom2"]])) {
+	if (!is.na(perm_info[["rate_values"]][["a2"]])) {
 		all_permutations <- c(
 			all_permutations,
-			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["atom2"]]))
+			list(matrix(0, nrow = 1, ncol = block_info[["inferred_multiplicity"]][["a2"]]))
 		)
 	}
 	if (length(all_permutations)) {
 		all_perm_names <- c(
-			if (!is.na(perm_info[["rate_values"]][["atom1"]])) as.character(perm_info[["rate_values"]][["atom1"]]),
-			if (!is.na(perm_info[["rate_values"]][["atom2"]])) as.character(perm_info[["rate_values"]][["atom2"]])
+			if (!is.na(perm_info[["rate_values"]][["a1"]])) as.character(perm_info[["rate_values"]][["a1"]]),
+			if (!is.na(perm_info[["rate_values"]][["a2"]])) as.character(perm_info[["rate_values"]][["a2"]])
 		)
 		names(all_permutations) <- all_perm_names
 	} else {

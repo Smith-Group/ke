@@ -120,8 +120,8 @@ atom_meta$atom_id <- atom_ids
 
 n_atom <- atom_meta[atom_meta$atom_name == "N", c("residue", "atom_id")]
 h_atom <- atom_meta[atom_meta$atom_name == "H", c("residue", "atom_id")]
-names(n_atom)[2] <- "atom1"
-names(h_atom)[2] <- "atom2"
+names(n_atom)[2] <- "a1"
+names(h_atom)[2] <- "a2"
 
 atom_pairs <- merge(n_atom, h_atom, by = "residue")
 atom_pairs <- atom_pairs[order(atom_pairs$residue), ]
@@ -132,7 +132,7 @@ relax_table <- Reduce(
 )
 
 relax_table <- merge(atom_pairs, relax_table, by = "residue")
-atom_pairs <- relax_table[, c("atom1", "atom2")]
+atom_pairs <- relax_table[, c("a1", "a2")]
 
 str(atom_pairs)
 ```

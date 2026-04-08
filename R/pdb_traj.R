@@ -171,10 +171,10 @@ pdb_traj_dacf <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_lis
 	
 		for (j in seq_len(nrow(atom_pair_mat_list[[i]]))) {
 
-			atom1 <- atom_pair_mat_list[[i]][j,1]
-			atom2 <- atom_pair_mat_list[[i]][j,2]
+			a1 <- atom_pair_mat_list[[i]][j,1]
+			a2 <- atom_pair_mat_list[[i]][j,2]
 			# some wastage here recalculating d_array for the entire buffer
-			r_array_buffer <- (coord_buffer[,,atom2]-coord_buffer[,,atom1])*1e-10
+			r_array_buffer <- (coord_buffer[,,a2]-coord_buffer[,,a1])*1e-10
 			if (radial_only) {
 				# take out reorientation of the vector
 				r_array_buffer[,1] <- sqrt(rowSums(r_array_buffer*r_array_buffer))
@@ -295,9 +295,9 @@ pdb_traj_d <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, 
 	
 		for (j in seq_len(nrow(atom_pair_mat_list[[i]]))) {
 	
-			atom1 <- atom_pair_mat_list[[i]][j,1]
-			atom2 <- atom_pair_mat_list[[i]][j,2]
-			r_array <- (coord_buffer[active_idx,,atom2]-coord_buffer[active_idx,,atom1])*1e-10
+			a1 <- atom_pair_mat_list[[i]][j,1]
+			a2 <- atom_pair_mat_list[[i]][j,2]
+			r_array <- (coord_buffer[active_idx,,a2]-coord_buffer[active_idx,,a1])*1e-10
 			if (unit) {
 				# change contents of r_array into unit vectors
 				r_array <- r_array/sqrt(rowSums(r_array*r_array))
@@ -330,4 +330,3 @@ pdb_traj_d <- function(coord_buffer, nframes, segment_nums, atom_pair_mat_list, 
 	
 	rep(list(NULL), length(segment_nums))
 }
-

@@ -21,7 +21,7 @@ make_spec_den_relax_data(
 label \code{lambda_int_coef}}
 
 \item{perm_rates}{length-two numeric vector describing permutation processes
-on the \code{atom1} and \code{atom2} sides. \code{NA} indicates no permutation, while a
+on the \code{a1} and \code{a2} sides. \code{NA} indicates no permutation, while a
 non-missing named value supplies the symbolic rate constant for the
 inferred permutation on that side.}
 }

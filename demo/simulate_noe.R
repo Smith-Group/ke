@@ -25,8 +25,10 @@ if (exclude_multiatom_groups) {
 
 	excluded_groups <- unique(proton_groups[duplicated(proton_groups)])
 	
-	cat("Excluding protons bound to these heavy atoms:", sep="\n")
-	print(excluded_groups)
+	message(
+		"Excluding protons bound to these heavy atoms:\n",
+		paste(excluded_groups, collapse = "\n")
+	)
 	
 	proton_groups <- proton_groups[!proton_groups %in% excluded_groups]
 }

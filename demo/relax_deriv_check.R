@@ -149,13 +149,14 @@ gradient <- attr(relax_energy, "gradient")
 gradient_fd <- gradient - relax_deriv_check
 overall_slope <- lsfit(as.vector(gradient_fd), as.vector(gradient), intercept = FALSE)$coef
 
-cat(
+message(
 	"Combined max absolute finite-difference discrepancy:\n",
-	max(abs(relax_deriv_check)),
-	"\n\n",
-	sep = ""
+	max(abs(relax_deriv_check))
 )
-cat("Combined analytical vs finite-difference slope:\n", unname(overall_slope), "\n\n", sep = "")
+message(
+	"Combined analytical vs finite-difference slope:\n",
+	unname(overall_slope)
+)
 
 oldpar <- par(no.readonly = TRUE)
 par(mfrow = c(1, 1))
@@ -224,7 +225,10 @@ summary_df <- do.call(
 	})
 )
 row.names(summary_df) <- NULL
-print(summary_df)
+message(
+	"Per-group derivative summary:\n",
+	paste(capture.output(print(summary_df)), collapse = "\n")
+)
 
 par(mfrow = c(2, 4))
 for (type in names(gradient_list)) {

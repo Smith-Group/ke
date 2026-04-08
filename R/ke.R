@@ -1555,7 +1555,7 @@ power_scale <- function(x, p) {
 #' x <- seq(-10, 10, by=0.1)
 #' loss_x <- sapply(x, power_scaled_loss, 2, 0.25)
 #' loss_x_grad <- power_scaled_loss(x, 2, 0.25, gradient=TRUE)
-#' par(mfrow=c(2, 1))
+#' oldpar <- par(mfrow = c(2, 1))
 #' plot(x, loss_x, type="l", ylab="loss")
 #' plot(x, attr(loss_x_grad, "gradient"), type="l", ylab="dloss/dx")
 #' points(x[-1]-mean(diff(x))/2, diff(loss_x)/mean(diff(x)), type="l", col="blue")
@@ -1563,6 +1563,7 @@ power_scale <- function(x, p) {
 #' legend("bottomright",
 #'   legend=c("Analytical", "Finite Difference"),
 #'   bty="n", lwd=1, col=c("black", "blue"))
+#' par(oldpar)
 #'
 #' @export
 power_scaled_loss <- function(x, x0, p=1, k=1, gradient=FALSE) {

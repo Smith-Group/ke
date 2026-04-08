@@ -157,6 +157,7 @@ cat(
 )
 cat("Combined analytical vs finite-difference slope:\n", unname(overall_slope), "\n\n", sep = "")
 
+oldpar <- par(no.readonly = TRUE)
 par(mfrow = c(1, 1))
 plot(gradient_fd, gradient, xlab = "Finite Difference Gradient", ylab = "Analytical Gradient")
 abline(0, 1, col = "red")
@@ -251,3 +252,5 @@ for (type in names(gradient_list)) {
 		bty = "n"
 	)
 }
+
+par(oldpar)

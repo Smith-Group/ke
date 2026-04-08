@@ -90,6 +90,7 @@ if (!"sigma_deriv_check" %in% ls()) {
 gradient <- attr(sigma_energy, "gradient")
 gradient_fd <- gradient - sigma_deriv_check
 
+oldpar <- par(no.readonly = TRUE)
 par(mfrow=c(1, 1))
 
 plot(gradient_fd, gradient, xlab="Finite Difference Gradient", ylab="Analytical Gradient", )
@@ -145,3 +146,5 @@ for (type in names(gradient_list)) {
 	
 	legend("topleft", legend=c("y = x", sprintf("y = %0.6fx", slope)), lwd=1, col=c("blue", "red"), bty="n")
 }
+
+par(oldpar)

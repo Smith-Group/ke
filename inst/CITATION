@@ -1,9 +1,9 @@
 citHeader("To cite package 'ke' in publications, please use:")
 
-citEntry(
-  entry = "Article",
+bibentry(
+  bibtype = "Article",
   title = "Enhancing NMR Derived Ensembles with Kinetics on Multiple Timescales",
-  author = personList(
+  author = c(
     person("Colin", "Smith"),
     person("Adam", "Mazur"),
     person("Ashok", "Rout"),
@@ -27,10 +27,10 @@ citEntry(
   )
 )
 
-citEntry(
-  entry = "Article",
+bibentry(
+  bibtype = "Article",
   title = "Restraining Interproton Angular and Distance Dynamics with KEnRef",
-  author = personList(
+  author = c(
     person("Amr", "Alhossary"),
     person("Colin A.", "Smith")
   ),

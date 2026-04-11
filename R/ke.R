@@ -2182,7 +2182,7 @@ read_spec_den_relax_data <- function(prefix_path) {
 		stop("The first two columns of `*_atom_relax.csv` must either both end in `_unit` or neither may")
 	}
 	unit <- all(first_two_unit)
-	atom_pair_cols <- !grepl("_(coef|freq)$", names(atom_relax_df))
+	atom_pair_cols <- !grepl("_(value|k|coef|freq)$", names(atom_relax_df))
 	atom_pairs <- atom_relax_df[, atom_pair_cols, drop = FALSE]
 	
 	list(
@@ -2257,6 +2257,13 @@ write_spec_den_relax_data <- function(spec_den_relax_data, prefix_path) {
 	relax_df <- spec_den_term_array_list_to_atom_relax_df(relax_data_list)
 	if (nrow(relax_df) && nrow(relax_df) != nrow(atom_pairs_out)) {
 		stop("`atom_pairs` and `relax_data_list` must have the same number of rows")
+	}
+	reserved_rate_cols <- intersect(names(atom_pairs_out), names(relax_df))
+	if (length(reserved_rate_cols)) {
+		stop(
+			"`atom_pairs` must not contain columns regenerated from `relax_data_list`: ",
+			paste(reserved_rate_cols, collapse = ", ")
+		)
 	}
 	atom_relax_df <- cbind(atom_pairs_out, relax_df)
 

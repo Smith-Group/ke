@@ -157,7 +157,6 @@ coord_atomnames <- function(coord) {
 #' @rdname coord_resnames
 #' @export
 coord_resnames <- function(coord) {
-
 	substr(dimnames(coord)[[2]], 6, 8)
 }
 
@@ -166,11 +165,10 @@ coord_resnames <- function(coord) {
 #' @rdname coord_resnames
 #' @export
 `coord_resnames<-` <- function(coord, value) {
-
-	stopifnot(nchar(value) == 4)
+	stopifnot(all(nchar(value) == 3))
 
 	substr(dimnames(coord)[[2]], 6, 8) <- value
-	
+
 	coord
 }
 
@@ -184,10 +182,9 @@ coord_resnames <- function(coord) {
 #' @rdname coord_atomresnames
 #' @export
 coord_atomresnames <- function(coord) {
-
 	atomresnames <- substr(dimnames(coord)[[2]], 1, 8)
 	substr(atomresnames, 5, 5) <- " "
-	
+
 	atomresnames
 }
 
@@ -196,12 +193,11 @@ coord_atomresnames <- function(coord) {
 #' @rdname coord_atomresnames
 #' @export
 `coord_atomresnames<-` <- function(coord, value) {
-
-	stopifnot(nchar(value) == 4)
+	stopifnot(all(nchar(value) == 8))
 
 	substr(dimnames(coord)[[2]], 1, 4) <- substr(value, 1, 4)
 	substr(dimnames(coord)[[2]], 6, 8) <- substr(value, 6, 8)
-	
+
 	coord
 }
 

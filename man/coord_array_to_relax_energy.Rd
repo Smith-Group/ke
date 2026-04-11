@@ -35,6 +35,11 @@ total restraint energy calculated using \code{loss_func}
 
 The optional derivative is contained in the \code{"gradient"} attribute. It is a 3D array
 (atoms, xyz, models).
+
+Gradient support currently propagates derivatives through the internal-motion
+amplitudes only. When anisotropic overall tumbling is used, the returned
+scalar energy is valid, but the \code{gradient = TRUE} result does not yet include
+derivatives through the overall tumbling modes.
 }
 \description{
 Calculate relaxation rate restraint energy from atomic coordinates

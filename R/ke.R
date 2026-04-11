@@ -2565,6 +2565,11 @@ coord_array_to_relax <- function(coord_array, rates, spec_den_relax_data_list) {
 #' The optional derivative is contained in the `"gradient"` attribute. It is a 3D array
 #' (atoms, xyz, models).
 #'
+#' Gradient support currently propagates derivatives through the internal-motion
+#' amplitudes only. When anisotropic overall tumbling is used, the returned
+#' scalar energy is valid, but the `gradient = TRUE` result does not yet include
+#' derivatives through the overall tumbling modes.
+#'
 #' @export
 coord_array_to_relax_energy <- function(coord_array, rates, spec_den_relax_data_list, loss_func = power_scaled_loss, ..., gradient = FALSE) {
 	# intermediate derivatives that need to be captured for back-propagation

@@ -2582,6 +2582,22 @@ coord_array_to_relax_energy <- function(coord_array, rates, spec_den_relax_data_
 		if (is.null(relax_data_list)) {
 			stop("`spec_den_relax_data` must contain `relax_data_list`")
 		}
+		missing_value_idx <- which(vapply(relax_data_list, function(relax_entry) {
+			is.null(relax_entry[["value"]])
+		}, logical(1)))
+		if (length(missing_value_idx)) {
+			missing_value_labels <- names(relax_data_list)[missing_value_idx]
+			if (is.null(missing_value_labels)) {
+				missing_value_labels <- paste0("entry ", missing_value_idx)
+			} else {
+				missing_value_labels[is.na(missing_value_labels) | !nzchar(missing_value_labels)] <-
+					paste0("entry ", missing_value_idx[is.na(missing_value_labels) | !nzchar(missing_value_labels)])
+			}
+			stop(
+				"`coord_array_to_relax_energy()` requires target `value` entries for all relaxation data; missing for ",
+				paste(missing_value_labels, collapse = ", ")
+			)
+		}
 
 		# calculate internuclear vectors (convert from Å to m)
 		r_array <- coord_array_to_r_array(coord_array * 1e-10, spec_den_relax_data[["atom_pairs"]][, 1:2, drop = FALSE])

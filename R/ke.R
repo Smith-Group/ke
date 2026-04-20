@@ -2351,7 +2351,7 @@ coord_array_to_sigma <- function(coord_array, rates, spec_den_data_list, proton_
 		d_array_shifted <- array_shift(d_array, n_shift)
 		
 		# calculate matrix of g values
-		g_mat <- apply(spec_den_data[["groupings"]], 1, d_array_to_g, d_array=d_array_shifted)
+		g_mat <- d_array_to_g_matrix(d_array_shifted, spec_den_data[["groupings"]], gradient = FALSE)
 		
 		# calculate matrix of a values
 		a_mat <- g_matrix_to_a_matrix(g_mat, spec_den_data[["a_coef"]])
@@ -2516,7 +2516,7 @@ coord_array_to_relax <- function(coord_array, rates, spec_den_relax_data_list) {
 		d_array_shifted <- array_shift(d_array, n_shift)
 
 		# calculate matrix of g values
-		g_mat <- apply(spec_den_relax_data[["groupings"]], 1, d_array_to_g, d_array = d_array_shifted)
+		g_mat <- d_array_to_g_matrix(d_array_shifted, spec_den_relax_data[["groupings"]], gradient = FALSE)
 
 		# calculate matrix of a values
 		a_int_mat <- g_matrix_to_a_matrix(g_mat, spec_den_relax_data[["a_int_coef"]])
